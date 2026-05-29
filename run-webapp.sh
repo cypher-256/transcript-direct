@@ -10,12 +10,15 @@ if [[ -z "${PYTHON_BIN}" ]]; then
   if [[ -x "${ROOT_DIR}/.venv/bin/python" ]]; then
     PYTHON_BIN="${ROOT_DIR}/.venv/bin/python"
   else
+    echo "Creating virtual environment in ${ROOT_DIR}/.venv"
     python3 -m venv "${ROOT_DIR}/.venv"
     PYTHON_BIN="${ROOT_DIR}/.venv/bin/python"
+    echo "Installing Python dependencies"
     "${PYTHON_BIN}" -m pip install --upgrade pip
     "${PYTHON_BIN}" -m pip install -r "${ROOT_DIR}/requirements.txt"
   fi
 fi
 
 export PYTHONPATH="${ROOT_DIR}:${PYTHONPATH:-}"
+echo "Starting Transcript Direct on http://${HOST}:${PORT}"
 exec "${PYTHON_BIN}" -m uvicorn backend.app:app --host "${HOST}" --port "${PORT}"

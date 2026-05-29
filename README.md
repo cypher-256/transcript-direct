@@ -13,10 +13,41 @@ and uses `Max phrase` only as a safety limit.
 - Linux desktop, or Windows with WSL2.
 - Python 3.10 or newer.
 - Chrome/Chromium for tab/screen capture with audio.
-- CUDA GPU recommended for `large-v3`; CPU works, but it is much slower.
-- Node.js is only needed for the quick frontend syntax check.
+- Internet access on first model use. `faster-whisper` downloads the selected
+  model automatically into `models/whisper-cache/`.
+- CUDA GPU recommended for `large-v3`. CPU works, but use `tiny` or `base` for
+  practical latency.
+- Node.js is optional and only needed for the frontend syntax check.
 
-## Installation
+## Quick Start
+
+The launcher creates `.venv` and installs Python dependencies automatically if
+they do not exist yet:
+
+```bash
+git clone <repo-url> transcript-direct
+cd transcript-direct
+./run-webapp.sh
+```
+
+Open the app in a real Chrome/Chromium tab:
+
+```text
+http://127.0.0.1:8099
+```
+
+For a CPU-only first run, start with the tiny model:
+
+```bash
+WHISPER_DEVICE=cpu WHISPER_MODEL_NAME=tiny ./run-webapp.sh
+```
+
+When you press `Transcribe` for the first time, the selected model is downloaded
+automatically. The first run can take longer because of that download.
+
+## Manual Installation
+
+Use this if you prefer to manage the virtual environment yourself:
 
 ```bash
 git clone <repo-url> transcript-direct
@@ -25,22 +56,14 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-```
-
-## Run
-
-```bash
 ./run-webapp.sh
 ```
 
-Open the app in a real browser tab:
+## Browser Access
 
-```text
-http://127.0.0.1:8099
-```
-
-Use `127.0.0.1` or `localhost`. Browser tab/screen capture does not work
-reliably inside IDE previews or remote hosts without HTTPS.
+Use `127.0.0.1` or `localhost` in a real Chrome/Chromium tab. Browser
+tab/screen capture does not work reliably inside IDE previews or remote hosts
+without HTTPS.
 
 On Windows with WSL2, run the backend inside WSL and open the URL from a normal
 Windows Chrome/Chromium tab. The browser captures Windows tab/screen audio and
@@ -54,6 +77,12 @@ If the port is already in use:
 PORT=8100 ./run-webapp.sh
 ```
 
+If you use WSL2 and `127.0.0.1` does not forward to WSL on your setup, try:
+
+```text
+http://localhost:8099
+```
+
 ## Usage
 
 Recommended defaults:
@@ -63,6 +92,12 @@ Recommended defaults:
 - Language: `English`.
 - Max phrase length: `3 s`.
 - Cross-phrase context: `24` words.
+
+Recommended CPU settings:
+
+- Model: `Whisper tiny` for lowest latency, or `Whisper base` for better
+  accuracy.
+- Command: `WHISPER_DEVICE=cpu WHISPER_MODEL_NAME=tiny ./run-webapp.sh`
 
 Normal flow:
 
@@ -88,12 +123,17 @@ Actual model files are ignored by Git. On first use, `faster-whisper` can
 download models into `models/whisper-cache/`. To list additional local model
 directories, set `TRANSCRIPT_MODEL_ROOTS`.
 
+No manual model download is required for built-in models (`tiny`, `base`,
+`small`, `large-v3`). The app lists them even when `models/whisper-cache/` is
+empty, and downloads the selected one when transcription starts.
+
 Useful environment variables:
 
 ```bash
 WHISPER_MODEL_NAME=large-v3 ./run-webapp.sh
 WHISPER_DEVICE=cpu ./run-webapp.sh
 WHISPER_COMPUTE_TYPE=int8 ./run-webapp.sh
+WHISPER_DOWNLOAD_ROOT=/path/to/cache ./run-webapp.sh
 TRANSCRIPT_MODEL_ROOTS=/path/to/models ./run-webapp.sh
 ```
 
@@ -143,6 +183,19 @@ In another terminal, verify the port is listening:
 ss -ltnp 'sport = :8099'
 ```
 
+CPU mode smoke test:
+
+```bash
+PORT=8101 WHISPER_DEVICE=cpu WHISPER_MODEL_NAME=tiny ./run-webapp.sh
+curl -s http://127.0.0.1:8101/api/health
+```
+
+Expected health fields include:
+
+```json
+{"device":"cpu","compute_type":"int8"}
+```
+
 ## Accuracy Benchmark
 
 Install extra benchmark dependencies:
@@ -161,6 +214,12 @@ Run the recommended benchmark:
 
 ```bash
 python scripts/benchmark_asr.py --model large-v3 --limit 10
+```
+
+CPU benchmark smoke test:
+
+```bash
+WHISPER_DEVICE=cpu WHISPER_COMPUTE_TYPE=int8 python scripts/benchmark_asr.py --model tiny --limit 1 --configs live-3s-beam5
 ```
 
 Full run:

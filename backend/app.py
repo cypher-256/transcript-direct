@@ -235,6 +235,14 @@ def _select_compute_type(device: str) -> str:
     return "float16" if device == "cuda" else "int8"
 
 
+def _download_root() -> Path:
+    raw = os.getenv("WHISPER_DOWNLOAD_ROOT", "models/whisper-cache").strip()
+    root = Path(raw).expanduser()
+    if not root.is_absolute():
+        root = PROJECT_ROOT / root
+    return root
+
+
 def _run_text_command(command: list[str]) -> str | None:
     try:
         completed = subprocess.run(
@@ -347,7 +355,7 @@ class WhisperRuntime:
                 device=device,
                 compute_type=compute_type,
                 cpu_threads=max(1, int(os.getenv("WHISPER_CPU_THREADS", "4"))),
-                download_root=str(PROJECT_ROOT / "models" / "whisper-cache"),
+                download_root=str(_download_root()),
             )
             self._model_id = model_ref
             self._device = device
