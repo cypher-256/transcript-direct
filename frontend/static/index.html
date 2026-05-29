@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transcript Direct</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Local whisper</p>
+          <h1>Transcript Direct</h1>
+        </div>
+        <div class="health-pill" id="healthPill">Backend</div>
+      </header>
+
+      <section class="control-panel" aria-label="Controles de transcripcion">
+        <label class="field">
+          <span>Modelo</span>
+          <select id="modelSelect"></select>
+        </label>
+
+        <label class="field checkbox-field">
+          <span>Microfono</span>
+          <span class="checkbox-control">
+            <input id="includeMicCheckbox" type="checkbox" />
+            <span>Incluir microfono del navegador</span>
+          </span>
+        </label>
+
+        <label class="field compact">
+          <span>Frase max.</span>
+          <select id="chunkSelect">
+            <option value="1.5">1.5 s</option>
+            <option value="2">2 s</option>
+            <option value="3" selected>3 s</option>
+          </select>
+        </label>
+
+        <label class="field compact">
+          <span>Idioma</span>
+          <select id="languageSelect">
+            <option value="es">Espanol</option>
+            <option value="en" selected>Ingles</option>
+          </select>
+        </label>
+
+        <div class="actions" role="group" aria-label="Acciones">
+          <button class="primary-button" id="startButton" type="button">
+            <span class="button-icon" aria-hidden="true"></span>
+            <span>Transcribir</span>
+          </button>
+          <button class="secondary-button" id="stopButton" type="button" disabled>
+            Detener
+          </button>
+          <button class="secondary-button" id="clearButton" type="button">
+            Limpiar
+          </button>
+        </div>
+      </section>
+
+      <section class="status-strip" aria-live="polite">
+        <div>
+          <span class="status-label">Estado</span>
+          <strong id="statusText">Preparado</strong>
+        </div>
+        <div>
+          <span class="status-label">Tiempo</span>
+          <strong id="timerText">00:00</strong>
+        </div>
+        <div>
+          <span class="status-label">Frases</span>
+          <strong id="chunkText">0</strong>
+        </div>
+      </section>
+
+      <section class="transcript-layout">
+        <article class="transcript-card">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">Salida en vivo</p>
+              <h2>Transcripcion</h2>
+            </div>
+            <button class="copy-button" id="copyButton" type="button">Copiar</button>
+          </div>
+          <div class="live-transcript" id="transcriptOutput">
+            <p class="placeholder">Presiona Transcribir y habla. El texto se completara palabra por palabra.</p>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js?v=20260529-browser-mix-1"></script>
+  </body>
+</html>

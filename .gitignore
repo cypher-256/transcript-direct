@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+*.log
+models/**
+!models/
+!models/whisper-cache/
+!models/.gitkeep
+!models/whisper-cache/.gitkeep
+benchmark_data/
+benchmark_results/
