@@ -27,13 +27,6 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-If you already have the `PUDU_app` environment, you can use it without creating
-a local `.venv`:
-
-```bash
-PYTHON_BIN=../PUDU_app/backend/.venv/bin/python ./run-webapp.sh
-```
-
 ## Run
 
 ```bash
@@ -86,9 +79,8 @@ models/
 ```
 
 Actual model files are ignored by Git. On first use, `faster-whisper` can
-download models into `models/whisper-cache/`. If
-`../PUDU_app/backend/models/whisper` exists, the app also lists those local
-models.
+download models into `models/whisper-cache/`. To list additional local model
+directories, set `TRANSCRIPT_MODEL_ROOTS`.
 
 Useful environment variables:
 

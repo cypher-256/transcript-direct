@@ -9,8 +9,6 @@ PYTHON_BIN="${PYTHON_BIN:-}"
 if [[ -z "${PYTHON_BIN}" ]]; then
   if [[ -x "${ROOT_DIR}/.venv/bin/python" ]]; then
     PYTHON_BIN="${ROOT_DIR}/.venv/bin/python"
-  elif [[ -x "${ROOT_DIR}/../PUDU_app/backend/.venv/bin/python" ]]; then
-    PYTHON_BIN="${ROOT_DIR}/../PUDU_app/backend/.venv/bin/python"
   else
     python3 -m venv "${ROOT_DIR}/.venv"
     PYTHON_BIN="${ROOT_DIR}/.venv/bin/python"

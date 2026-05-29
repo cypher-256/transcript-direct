@@ -104,7 +104,6 @@ def _split_paths(raw: str) -> list[Path]:
 def _default_model_roots() -> list[Path]:
     roots = [
         PROJECT_ROOT / "models" / "whisper",
-        PROJECT_ROOT.parent / "PUDU_app" / "backend" / "models" / "whisper",
     ]
     extra = os.getenv("TRANSCRIPT_MODEL_ROOTS", "")
     roots.extend(_split_paths(extra))
@@ -121,8 +120,6 @@ def _looks_like_ctranslate2_model(path: Path) -> bool:
 
 
 def _human_model_label(name: str) -> str:
-    if name.startswith("pudu_v"):
-        return f"PUDU {name.removeprefix('pudu_').replace('_', ' ')}"
     if name.startswith("large"):
         return f"Whisper {name}"
     return name.replace("_", " ")
