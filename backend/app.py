@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import gc
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -31,6 +32,7 @@ except Exception:  # pragma: no cover - installed with faster-whisper in normal 
 from faster_whisper import WhisperModel
 
 
+logger = logging.getLogger("transcript_direct")
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = PROJECT_ROOT / "frontend" / "static"
 DEFAULT_SAMPLE_RATE = 16_000
@@ -1007,6 +1009,7 @@ async def transcribe_ws(
     except WebSocketDisconnect:
         return
     except Exception as exc:
+        logger.exception("Transcription WebSocket failed")
         await _send_json(
             websocket,
             {

@@ -15,6 +15,7 @@ const els = {
   statusText: document.querySelector("#statusText"),
   timerText: document.querySelector("#timerText"),
   chunkText: document.querySelector("#chunkText"),
+  levelText: document.querySelector("#levelText"),
   transcriptOutput: document.querySelector("#transcriptOutput"),
   eventLog: document.querySelector("#eventLog"),
 };
@@ -114,6 +115,27 @@ function updateTimer() {
   els.timerText.textContent = formatClock(seconds);
 }
 
+function audioRms(input) {
+  if (!input.length) {
+    return 0;
+  }
+  let sum = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    sum += input[i] * input[i];
+  }
+  return Math.sqrt(sum / input.length);
+}
+
+function updateInputLevel(input) {
+  const rms = audioRms(input);
+  if (rms < 0.0005) {
+    els.levelText.textContent = "Silent";
+    return;
+  }
+  const db = Math.max(-90, Math.min(0, 20 * Math.log10(rms)));
+  els.levelText.textContent = `${Math.round(db)} dB`;
+}
+
 function clearRunTimers() {
   window.clearInterval(state.timerId);
   state.timerId = 0;
@@ -158,6 +180,7 @@ function finalizeStop(status = "Stopped") {
   state.isStopping = false;
   updateRunningUi(false);
   setStatus(status);
+  els.levelText.textContent = "Idle";
   updateTimer();
 }
 
@@ -377,6 +400,21 @@ function stopStreams(streams) {
   }
 }
 
+function watchCaptureTracks(streams) {
+  for (const stream of streams) {
+    for (const track of stream.getTracks()) {
+      track.addEventListener("ended", () => {
+        if (!state.isRunning || state.isStopping) {
+          return;
+        }
+        const message = "Capture ended";
+        setStatus(message);
+        void stop().then(() => setStatus(message));
+      });
+    }
+  }
+}
+
 async function openCaptureStreams(includeMic) {
   if (!window.isSecureContext) {
     throw new Error("Screen capture requires opening the app at http://127.0.0.1:8099 or HTTPS.");
@@ -430,15 +468,16 @@ function attachAudioProcessor(streams) {
 
   const audioContext = new AudioContextClass();
   const processorNode = audioContext.createScriptProcessor(4096, 1, 1);
-  const outputNode = audioContext.createGain();
-  outputNode.gain.value = 0;
   const sourceNodes = [];
 
   processorNode.onaudioprocess = (event) => {
+    const output = event.outputBuffer.getChannelData(0);
+    output.fill(0);
     if (!state.isRunning) {
       return;
     }
     const input = event.inputBuffer.getChannelData(0);
+    updateInputLevel(input);
     const normalized = downsample(input, audioContext.sampleRate, SAMPLE_RATE);
     pushAudio(normalized);
   };
@@ -451,12 +490,11 @@ function attachAudioProcessor(streams) {
     gainNode.connect(processorNode);
     sourceNodes.push(sourceNode, gainNode);
   }
-  processorNode.connect(outputNode);
-  outputNode.connect(audioContext.destination);
+  processorNode.connect(audioContext.destination);
 
   state.audioContext = audioContext;
   state.sourceNodes = sourceNodes;
-  state.outputNode = outputNode;
+  state.outputNode = null;
   state.processorNode = processorNode;
 }
 
@@ -566,6 +604,7 @@ async function start() {
     updateTimer();
 
     state.streams = streams;
+    watchCaptureTracks(state.streams);
     attachSocket(model, els.languageSelect.value);
     attachAudioProcessor(state.streams);
   } catch (error) {
