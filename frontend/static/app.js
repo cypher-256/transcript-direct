@@ -38,10 +38,23 @@ const state = {
   isRunning: false,
   isStopping: false,
   stopCloseTimer: 0,
+  health: null,
 };
 
 function setStatus(text) {
   els.statusText.textContent = text;
+}
+
+function languageLabel() {
+  return els.languageSelect.value === "es" ? "Spanish" : "English";
+}
+
+function updateHealthPill() {
+  if (!state.health) {
+    els.healthPill.textContent = `Backend · ${languageLabel()}`;
+    return;
+  }
+  els.healthPill.textContent = `${state.health.device} / ${state.health.compute_type} · ${languageLabel()}`;
 }
 
 function logEvent(text) {
@@ -61,16 +74,16 @@ function describeMediaError(error) {
   const name = error?.name || "";
   const message = error?.message || String(error);
   if (name === "NotAllowedError") {
-    return "El navegador bloqueo o cancelo la captura. Abre la app en una pestana real de Chrome/Chromium, no en el visor del IDE.";
+    return "The browser blocked or canceled capture. Open the app in a real Chrome/Chromium tab, not an IDE preview.";
   }
   if (name === "InvalidStateError") {
-    return "La captura debe iniciarse desde una pestana activa. Haz click en la pagina y vuelve a presionar Transcribir.";
+    return "Capture must start from an active tab. Click the page and press Transcribe again.";
   }
   if (name === "NotFoundError") {
-    return "No hay fuente de pantalla disponible para capturar.";
+    return "No screen capture source is available.";
   }
   if (name === "NotReadableError") {
-    return "El sistema no dejo leer la pantalla. Revisa permisos de captura del navegador/escritorio.";
+    return "The system did not allow screen capture. Check browser or desktop permissions.";
   }
   return message;
 }
@@ -137,7 +150,7 @@ async function releaseAudioCapture() {
   state.streams = [];
 }
 
-function finalizeStop(status = "Detenido") {
+function finalizeStop(status = "Stopped") {
   clearRunTimers();
   state.startedAt = 0;
   state.pendingBuffers = [];
@@ -165,7 +178,7 @@ function renderTranscript() {
   if (!hasWords && state.wordQueue.length === 0) {
     const placeholder = document.createElement("p");
     placeholder.className = "placeholder";
-    placeholder.textContent = "Presiona Transcribir y habla. El texto se completara palabra por palabra.";
+    placeholder.textContent = "Press Transcribe and share tab audio. Text will appear word by word.";
     els.transcriptOutput.append(placeholder);
     return;
   }
@@ -249,7 +262,7 @@ function clearTranscript() {
   state.chunksSent = 0;
   els.chunkText.textContent = "0";
   renderTranscript();
-  logEvent("Transcripcion limpia");
+  logEvent("Transcription cleared");
 }
 
 function downsample(input, inputRate, outputRate) {
@@ -317,7 +330,7 @@ function pushAudio(buffer) {
 async function fetchModels() {
   const response = await fetch("/api/models");
   if (!response.ok) {
-    throw new Error("No se pudo leer la lista de modelos.");
+    throw new Error("Could not load model list.");
   }
   const payload = await response.json();
   els.modelSelect.innerHTML = "";
@@ -326,7 +339,7 @@ async function fetchModels() {
     const option = document.createElement("option");
     option.value = model.id;
     option.textContent = model.recommended
-      ? `${model.label} - recomendado`
+      ? `${model.label} - recommended`
       : model.label;
     option.title = model.detail;
     els.modelSelect.append(option);
@@ -344,10 +357,11 @@ async function checkHealth() {
   try {
     const response = await fetch("/api/health");
     if (!response.ok) {
-      throw new Error("Backend no disponible.");
+      throw new Error("Backend unavailable.");
     }
     const payload = await response.json();
-    els.healthPill.textContent = `${payload.device} / ${payload.compute_type}`;
+    state.health = payload;
+    updateHealthPill();
     els.healthPill.classList.add("is-ok");
   } catch (error) {
     els.healthPill.textContent = "Backend offline";
@@ -365,10 +379,10 @@ function stopStreams(streams) {
 
 async function openCaptureStreams(includeMic) {
   if (!window.isSecureContext) {
-    throw new Error("La captura de pantalla requiere abrir la app en http://127.0.0.1:8099 o HTTPS.");
+    throw new Error("Screen capture requires opening the app at http://127.0.0.1:8099 or HTTPS.");
   }
   if (!navigator.mediaDevices?.getDisplayMedia) {
-    throw new Error("Este navegador no permite captura de pantalla. Prueba Chrome/Chromium en http://127.0.0.1:8099.");
+    throw new Error("This browser does not support screen capture. Try Chrome/Chromium at http://127.0.0.1:8099.");
   }
 
   const streams = [];
@@ -380,13 +394,13 @@ async function openCaptureStreams(includeMic) {
 
   if (displayStream.getAudioTracks().length === 0) {
     stopStreams(streams);
-    throw new Error("No se compartio audio. Activa 'compartir audio' en el selector.");
+    throw new Error("No audio was shared. Enable audio sharing in the browser picker.");
   }
 
   if (includeMic) {
     if (!navigator.mediaDevices?.getUserMedia) {
       stopStreams(streams);
-      throw new Error("Este navegador no soporta captura de microfono.");
+      throw new Error("This browser does not support microphone capture.");
     }
     try {
       const micStream = await navigator.mediaDevices.getUserMedia({
@@ -411,7 +425,7 @@ async function openCaptureStreams(includeMic) {
 function attachAudioProcessor(streams) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) {
-    throw new Error("AudioContext no esta disponible en este navegador.");
+    throw new Error("AudioContext is not available in this browser.");
   }
 
   const audioContext = new AudioContextClass();
@@ -451,8 +465,8 @@ function attachSocket(model, language) {
   state.websocket = socket;
 
   socket.addEventListener("open", () => {
-    setStatus("Conectado");
-    logEvent("WebSocket conectado");
+    setStatus("Connected");
+    logEvent("WebSocket connected");
   });
 
   socket.addEventListener("message", (event) => {
@@ -469,7 +483,7 @@ function attachSocket(model, language) {
     }
 
     if (payload.type === "ready") {
-      setStatus("Escuchando");
+      setStatus("Listening");
       logEvent(payload.message);
       return;
     }
@@ -483,15 +497,15 @@ function attachSocket(model, language) {
       return;
     }
     if (payload.type === "status" || payload.type === "processing") {
-      setStatus(payload.message || "Procesando");
+      setStatus(payload.message || "Processing");
       return;
     }
     if (payload.type === "silence") {
-      setStatus("Silencio");
+      setStatus("Silence");
       return;
     }
     if (payload.type === "empty_phrase") {
-      setStatus("Escuchando");
+      setStatus("Listening");
       return;
     }
     if (payload.type === "transcript") {
@@ -502,12 +516,12 @@ function attachSocket(model, language) {
           text: payload.text,
         });
         enqueueTranscriptText(payload.text, Boolean(payload.paragraph_break_before));
-        setStatus("Escuchando");
+        setStatus("Listening");
       }
       return;
     }
     if (payload.type === "error") {
-      const message = payload.message || "Error de transcripcion";
+      const message = payload.message || "Transcription error";
       setStatus(message);
       logEvent(message);
       void stop().then(() => setStatus(message));
@@ -522,12 +536,12 @@ function attachSocket(model, language) {
     }
     if (state.isRunning) {
       state.websocket = null;
-      finalizeStop("Conexion cerrada");
+      finalizeStop("Connection closed");
     }
   });
 
   socket.addEventListener("error", () => {
-    const message = "No se pudo conectar con el backend";
+    const message = "Could not connect to backend";
     setStatus(message);
     logEvent(message);
   });
@@ -537,16 +551,16 @@ async function start() {
   try {
     const model = els.modelSelect.value;
     if (!model) {
-      throw new Error("No hay modelo seleccionado. Revisa que el backend este activo.");
+      throw new Error("No model selected. Check that the backend is running.");
     }
 
     const includeMic = els.includeMicCheckbox.checked;
-    setStatus(includeMic ? "Abriendo pantalla y microfono" : "Abriendo selector de pantalla");
+    setStatus(includeMic ? "Opening screen and microphone" : "Opening screen picker");
     const streams = await openCaptureStreams(includeMic);
 
     clearTranscript();
     updateRunningUi(true);
-    setStatus("Conectando");
+    setStatus("Connecting");
     state.startedAt = Date.now();
     state.timerId = window.setInterval(updateTimer, 500);
     updateTimer();
@@ -569,7 +583,7 @@ async function stop() {
 
   state.isStopping = true;
   updateRunningUi(false);
-  setStatus("Deteniendo");
+  setStatus("Stopping");
   window.clearInterval(state.timerId);
   state.pendingBuffers = [];
   state.pendingLength = 0;
@@ -608,13 +622,17 @@ async function copyTranscript() {
     return;
   }
   await navigator.clipboard.writeText(text);
-  logEvent("Texto copiado");
+  logEvent("Text copied");
 }
 
 els.startButton.addEventListener("click", start);
 els.stopButton.addEventListener("click", stop);
 els.clearButton.addEventListener("click", clearTranscript);
 els.copyButton.addEventListener("click", copyTranscript);
+els.languageSelect.addEventListener("change", updateHealthPill);
+
+els.languageSelect.value = "en";
+updateHealthPill();
 
 try {
   await Promise.all([fetchModels(), checkHealth()]);

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,22 +16,22 @@
         <div class="health-pill" id="healthPill">Backend</div>
       </header>
 
-      <section class="control-panel" aria-label="Controles de transcripcion">
+      <section class="control-panel" aria-label="Transcription controls">
         <label class="field">
-          <span>Modelo</span>
+          <span>Model</span>
           <select id="modelSelect"></select>
         </label>
 
         <label class="field checkbox-field">
-          <span>Microfono</span>
+          <span>Microphone</span>
           <span class="checkbox-control">
             <input id="includeMicCheckbox" type="checkbox" />
-            <span>Incluir microfono del navegador</span>
+            <span>Include browser microphone</span>
           </span>
         </label>
 
         <label class="field compact">
-          <span>Frase max.</span>
+          <span>Max phrase</span>
           <select id="chunkSelect">
             <option value="1.5">1.5 s</option>
             <option value="2">2 s</option>
@@ -40,38 +40,38 @@
         </label>
 
         <label class="field compact">
-          <span>Idioma</span>
+          <span>Language</span>
           <select id="languageSelect">
-            <option value="es">Espanol</option>
-            <option value="en" selected>Ingles</option>
+            <option value="en" selected>English</option>
+            <option value="es">Spanish</option>
           </select>
         </label>
 
-        <div class="actions" role="group" aria-label="Acciones">
+        <div class="actions" role="group" aria-label="Actions">
           <button class="primary-button" id="startButton" type="button">
             <span class="button-icon" aria-hidden="true"></span>
-            <span>Transcribir</span>
+            <span>Transcribe</span>
           </button>
           <button class="secondary-button" id="stopButton" type="button" disabled>
-            Detener
+            Stop
           </button>
           <button class="secondary-button" id="clearButton" type="button">
-            Limpiar
+            Clear
           </button>
         </div>
       </section>
 
       <section class="status-strip" aria-live="polite">
         <div>
-          <span class="status-label">Estado</span>
-          <strong id="statusText">Preparado</strong>
+          <span class="status-label">State</span>
+          <strong id="statusText">Ready</strong>
         </div>
         <div>
-          <span class="status-label">Tiempo</span>
+          <span class="status-label">Time</span>
           <strong id="timerText">00:00</strong>
         </div>
         <div>
-          <span class="status-label">Frases</span>
+          <span class="status-label">Phrases</span>
           <strong id="chunkText">0</strong>
         </div>
       </section>
@@ -80,18 +80,18 @@
         <article class="transcript-card">
           <div class="section-header">
             <div>
-              <p class="eyebrow">Salida en vivo</p>
-              <h2>Transcripcion</h2>
+              <p class="eyebrow">Live output</p>
+              <h2>Transcription</h2>
             </div>
-            <button class="copy-button" id="copyButton" type="button">Copiar</button>
+            <button class="copy-button" id="copyButton" type="button">Copy</button>
           </div>
           <div class="live-transcript" id="transcriptOutput">
-            <p class="placeholder">Presiona Transcribir y habla. El texto se completara palabra por palabra.</p>
+            <p class="placeholder">Press Transcribe and share tab audio. Text will appear word by word.</p>
           </div>
         </article>
       </section>
     </main>
 
-    <script type="module" src="/app.js?v=20260529-browser-mix-1"></script>
+    <script type="module" src="/app.js?v=20260529-english-ui-1"></script>
   </body>
 </html>

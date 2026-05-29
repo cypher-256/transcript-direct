@@ -1,12 +1,12 @@
 # Transcript Direct
 
 Local web app for live audio transcription with `faster-whisper`. It has no
-login: open the page, choose a model/language, and press `Transcribir`.
+login: open the page, choose a model/language, and press `Transcribe`.
 
 The app captures audio from a browser tab or screen. It can optionally mix the
 browser microphone into the same audio signal before sending it to Whisper. The
 output is grouped naturally: the backend emits a phrase when it detects a pause
-and uses `Frase max.` only as a safety limit.
+and uses `Max phrase` only as a safety limit.
 
 ## Requirements
 
@@ -60,7 +60,7 @@ Recommended defaults:
 
 - Model: `Whisper large-v3`.
 - Source: browser tab or screen with audio.
-- Language: `Ingles`.
+- Language: `English`.
 - Max phrase length: `3 s`.
 - Cross-phrase context: `24` words.
 
@@ -68,9 +68,9 @@ Normal flow:
 
 1. Open `http://127.0.0.1:8099`.
 2. Select model and language.
-3. Enable `Incluir microfono del navegador` only if you want to mix your voice
+3. Enable `Include browser microphone` only if you want to mix your voice
    with the tab/screen audio.
-4. Press `Transcribir`.
+4. Press `Transcribe`.
 5. In the browser picker, choose a tab/screen and enable audio sharing.
 
 ## Models

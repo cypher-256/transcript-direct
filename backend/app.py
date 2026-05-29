@@ -47,28 +47,28 @@ BUILTIN_MODELS = [
     {
         "id": "tiny",
         "label": "Whisper tiny",
-        "detail": "Mas ligero, prioriza latencia sobre precision.",
+        "detail": "Lightest option, prioritizes latency over accuracy.",
         "recommended": False,
         "local": False,
     },
     {
         "id": "base",
         "label": "Whisper base",
-        "detail": "Mas preciso que tiny, todavia liviano.",
+        "detail": "More accurate than tiny, still lightweight.",
         "recommended": False,
         "local": False,
     },
     {
         "id": "small",
         "label": "Whisper small",
-        "detail": "Mejor precision, mas latencia.",
+        "detail": "Better accuracy with higher latency.",
         "recommended": False,
         "local": False,
     },
     {
         "id": "large-v3",
         "label": "Whisper large-v3",
-        "detail": "Mayor precision, mas uso de GPU y latencia.",
+        "detail": "Highest accuracy, more GPU use and latency.",
         "recommended": True,
         "local": False,
     },
@@ -186,7 +186,7 @@ def build_model_catalog() -> dict[str, CatalogEntry]:
             catalog[model_id] = CatalogEntry(
                 id=model_id,
                 label=label,
-                detail=f"Modelo local en {model_path}",
+                detail=f"Local model at {model_path}",
                 recommended=recommended,
                 local=True,
                 path=model_path,
@@ -296,7 +296,7 @@ def _speaker_capture_available() -> bool:
 def _speaker_capture_command(source: str) -> list[str]:
     executable = shutil.which("parec")
     if executable is None:
-        raise RuntimeError("No se encontro 'parec'. Instala pulseaudio-utils.")
+        raise RuntimeError("Could not find 'parec'. Install pulseaudio-utils.")
     return [
         executable,
         "--record",
@@ -325,7 +325,7 @@ class WhisperRuntime:
     def get(self, model_id: str) -> WhisperModel:
         catalog = build_model_catalog()
         if model_id not in catalog:
-            raise ValueError(f"Modelo no disponible: {model_id}")
+            raise ValueError(f"Model is not available: {model_id}")
 
         entry = catalog[model_id]
         model_ref = str(entry.path) if entry.path is not None else entry.id
@@ -494,9 +494,9 @@ def _transcribe_chunk(
 
 
 def _normalize_language(language: str | None) -> str:
-    normalized = (language or "es").strip().lower()
+    normalized = (language or "en").strip().lower()
     if normalized not in {"es", "en"}:
-        return "es"
+        return "en"
     return normalized
 
 
@@ -695,7 +695,7 @@ async def _transcribe_phrase_segment(
             "phrase": segment.index,
             "start": segment.start,
             "end": segment.end,
-            "message": "Procesando frase",
+            "message": "Processing phrase",
             "reason": segment.reason,
             "paragraph_break_before": segment.paragraph_break_before,
         },
@@ -834,7 +834,7 @@ async def _capture_speakers(
     )
     if process.stdout is None:
         _terminate_capture(process)
-        raise RuntimeError("No se pudo abrir stdout para capturar parlantes.")
+        raise RuntimeError("Could not open stdout for speaker capture.")
 
     stop_event = asyncio.Event()
     stop_task = asyncio.create_task(_watch_stop_command(websocket, stop_event))
@@ -867,7 +867,7 @@ async def _capture_speakers(
         websocket,
         {
             "type": "status",
-            "message": f"Capturando parlantes desde {source}",
+            "message": f"Capturing speakers from {source}",
             "speaker_source": source,
         },
     )
@@ -881,7 +881,7 @@ async def _capture_speakers(
                 stderr = ""
                 if process.stderr is not None:
                     stderr = process.stderr.read().decode("utf-8", errors="ignore").strip()
-                raise RuntimeError(stderr or "La captura de parlantes se cerro.")
+                raise RuntimeError(stderr or "Speaker capture closed.")
             await _process_audio_payload(
                 websocket,
                 whisper,
@@ -943,7 +943,7 @@ async def transcribe_ws(
             websocket,
             {
                 "type": "status",
-                "message": f"Cargando modelo {model}",
+                "message": f"Loading model {model}",
             },
         )
         whisper = await asyncio.to_thread(runtime.get, model)
@@ -951,7 +951,7 @@ async def transcribe_ws(
             websocket,
             {
                 "type": "ready",
-                "message": "Listo para transcribir",
+                "message": "Ready to transcribe",
                 "model": model,
                 "language": selected_language,
                 "sample_rate": DEFAULT_SAMPLE_RATE,
