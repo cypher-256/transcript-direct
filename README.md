@@ -1,22 +1,22 @@
 # Transcript Direct
 
-Webapp local para transcribir audio en vivo con `faster-whisper`. No tiene login:
-abres la pagina, eliges modelo/idioma y presionas `Transcribir`.
+Local web app for live audio transcription with `faster-whisper`. It has no
+login: open the page, choose a model/language, and press `Transcribir`.
 
-La app captura audio de una pantalla o pestana desde el navegador. Opcionalmente
-puede mezclar el microfono del navegador en la misma senal antes de enviarla a
-Whisper. La salida se agrupa de forma natural: el backend emite una frase cuando
-detecta una pausa y usa `Frase max.` solo como limite de seguridad.
+The app captures audio from a browser tab or screen. It can optionally mix the
+browser microphone into the same audio signal before sending it to Whisper. The
+output is grouped naturally: the backend emits a phrase when it detects a pause
+and uses `Frase max.` only as a safety limit.
 
-## Requisitos
+## Requirements
 
 - Linux desktop.
-- Python 3.10 o superior.
-- Chrome/Chromium para captura de pestana/pantalla con audio.
-- GPU CUDA recomendada para `large-v3`; CPU funciona, pero sera mucho mas lento.
-- Node.js solo es necesario para el chequeo rapido de sintaxis del frontend.
+- Python 3.10 or newer.
+- Chrome/Chromium for tab/screen capture with audio.
+- CUDA GPU recommended for `large-v3`; CPU works, but it is much slower.
+- Node.js is only needed for the quick frontend syntax check.
 
-## Instalacion
+## Installation
 
 ```bash
 git clone <repo-url> transcript-direct
@@ -27,56 +27,56 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Si ya tienes el entorno de `PUDU_app`, tambien puedes usarlo sin crear `.venv`:
+If you already have the `PUDU_app` environment, you can use it without creating
+a local `.venv`:
 
 ```bash
 PYTHON_BIN=../PUDU_app/backend/.venv/bin/python ./run-webapp.sh
 ```
 
-## Ejecutar
+## Run
 
 ```bash
 ./run-webapp.sh
 ```
 
-Abre la app en una pestana real del navegador:
+Open the app in a real browser tab:
 
 ```text
 http://127.0.0.1:8099
 ```
 
-Usa `127.0.0.1` o `localhost`. La captura de pantalla/pestana del navegador no
-funciona de forma confiable en previews internos de IDE ni en hosts remotos sin
-HTTPS.
+Use `127.0.0.1` or `localhost`. Browser tab/screen capture does not work
+reliably inside IDE previews or remote hosts without HTTPS.
 
-Si el puerto esta ocupado:
+If the port is already in use:
 
 ```bash
 PORT=8100 ./run-webapp.sh
 ```
 
-## Uso
+## Usage
 
-Defaults recomendados:
+Recommended defaults:
 
-- Modelo: `Whisper large-v3`.
-- Fuente: pantalla o pestana con audio desde el navegador.
-- Idioma: `Ingles`.
-- Frase max.: `3 s`.
-- Contexto entre frases: `24` palabras.
+- Model: `Whisper large-v3`.
+- Source: browser tab or screen with audio.
+- Language: `Ingles`.
+- Max phrase length: `3 s`.
+- Cross-phrase context: `24` words.
 
-Flujo normal:
+Normal flow:
 
-1. Abre `http://127.0.0.1:8099`.
-2. Selecciona modelo e idioma.
-3. Activa `Incluir microfono del navegador` solo si quieres mezclar tu voz con
-   el audio de la pestana/pantalla.
-4. Presiona `Transcribir`.
-5. En el selector del navegador, elige pestana/pantalla y marca compartir audio.
+1. Open `http://127.0.0.1:8099`.
+2. Select model and language.
+3. Enable `Incluir microfono del navegador` only if you want to mix your voice
+   with the tab/screen audio.
+4. Press `Transcribir`.
+5. In the browser picker, choose a tab/screen and enable audio sharing.
 
-## Modelos
+## Models
 
-La carpeta `models/` existe en el repo solo como estructura:
+The `models/` directory is committed only as an empty structure:
 
 ```text
 models/
@@ -85,23 +85,24 @@ models/
     .gitkeep
 ```
 
-El contenido real de modelos esta ignorado por Git. En el primer uso,
-`faster-whisper` puede descargar modelos en `models/whisper-cache/`. Si existe
-`../PUDU_app/backend/models/whisper`, la app tambien lista esos modelos locales.
+Actual model files are ignored by Git. On first use, `faster-whisper` can
+download models into `models/whisper-cache/`. If
+`../PUDU_app/backend/models/whisper` exists, the app also lists those local
+models.
 
-Variables utiles:
+Useful environment variables:
 
 ```bash
 WHISPER_MODEL_NAME=large-v3 ./run-webapp.sh
 WHISPER_DEVICE=cpu ./run-webapp.sh
 WHISPER_COMPUTE_TYPE=int8 ./run-webapp.sh
-TRANSCRIPT_MODEL_ROOTS=/ruta/a/modelos ./run-webapp.sh
+TRANSCRIPT_MODEL_ROOTS=/path/to/models ./run-webapp.sh
 ```
 
-`WHISPER_COMPUTE_TYPE` queda en `float16` con CUDA y `int8` con CPU, salvo que lo
-definas manualmente.
+`WHISPER_COMPUTE_TYPE` defaults to `float16` on CUDA and `int8` on CPU unless
+you set it manually.
 
-## Ajustes
+## Tuning
 
 ```bash
 TRANSCRIPT_PHRASE_SILENCE_SECONDS=0.55 ./run-webapp.sh
@@ -112,25 +113,25 @@ WHISPER_BEAM_SIZE=5 ./run-webapp.sh
 WHISPER_CONTEXT_WORDS=24 ./run-webapp.sh
 ```
 
-Para maxima velocidad puedes bajar `WHISPER_BEAM_SIZE=1`; para mejor continuidad
-el default usa `WHISPER_CONTEXT_WORDS=24`. Si aparecen repeticiones por audio
-dificil, prueba `WHISPER_CONTEXT_WORDS=0`.
+For maximum speed, lower `WHISPER_BEAM_SIZE=1`. For better continuity, the
+default uses `WHISPER_CONTEXT_WORDS=24`. If difficult audio causes repetition,
+try `WHISPER_CONTEXT_WORDS=0`.
 
-## Pruebas rapidas
+## Quick Tests
 
-Chequeo de sintaxis Python:
+Python syntax check:
 
 ```bash
 python -m compileall backend scripts
 ```
 
-Chequeo de sintaxis frontend:
+Frontend syntax check:
 
 ```bash
 node --check frontend/static/app.js
 ```
 
-Prueba de endpoints con la app corriendo:
+Endpoint checks with the app running:
 
 ```bash
 ./run-webapp.sh
@@ -138,57 +139,57 @@ curl -s http://127.0.0.1:8099/api/health
 curl -s http://127.0.0.1:8099/api/models
 ```
 
-En otra terminal puedes verificar que el puerto esta escuchando:
+In another terminal, verify the port is listening:
 
 ```bash
 ss -ltnp 'sport = :8099'
 ```
 
-## Benchmark de precision
+## Accuracy Benchmark
 
-Instala dependencias extra del benchmark:
+Install extra benchmark dependencies:
 
 ```bash
 python -m pip install -r benchmark-requirements.txt
 ```
 
-Descarga el dataset AMI de dos hablantes y materializalo en `benchmark_data/`:
+Download and materialize the two-speaker AMI dataset into `benchmark_data/`:
 
 ```bash
 python scripts/download_benchmark_dataset.py
 ```
 
-Corre el benchmark recomendado:
+Run the recommended benchmark:
 
 ```bash
 python scripts/benchmark_asr.py --model large-v3 --limit 10
 ```
 
-Corrida completa:
+Full run:
 
 ```bash
 python scripts/benchmark_asr.py --model large-v3 --limit 50 --configs live-3s-context24,live-3s-beam5
 ```
 
-El dataset queda en `benchmark_data/ami_2speaker_test/` y los resultados en
-`benchmark_results/`. Ambas carpetas estan ignoradas por Git.
+The dataset is written to `benchmark_data/ami_2speaker_test/` and results are
+written to `benchmark_results/`. Both directories are ignored by Git.
 
-Resultado local de referencia con `large-v3`, CUDA/float16 y 10 clips:
+Local reference result with `large-v3`, CUDA/float16, and 10 clips:
 
-| Config | WER | Bag F1 | RTF | Latencia chunk |
+| Config | WER | Bag F1 | RTF | Chunk latency |
 | --- | ---: | ---: | ---: | ---: |
 | live-3s-beam5 | 0.261 | 0.828 | 0.053 | 0.155s |
 | live-3s-context24 | 0.240 | 0.845 | 0.050 | 0.146s |
 | live-2s-beam5 | 0.273 | 0.815 | 0.068 | 0.134s |
 | live-1s-beam5 | 0.388 | 0.719 | 0.102 | 0.103s |
 
-En una corrida completa de 50 clips, `live-3s-context24` bajo WER de `0.294` a
-`0.277` frente a `live-3s-beam5`.
+On a full 50-clip run, `live-3s-context24` reduced WER from `0.294` to `0.277`
+compared with `live-3s-beam5`.
 
-## Publicar en GitHub
+## Publish to GitHub
 
-El repo debe subir codigo, scripts y estructura de carpetas, pero no modelos ni
-datasets generados.
+The repository should contain code, scripts, and empty directory placeholders,
+but not generated models or benchmark datasets.
 
 ```bash
 git add .
@@ -196,7 +197,7 @@ git commit -m "Initial Transcript Direct app"
 gh repo create transcript-direct --private --source=. --remote=origin --push
 ```
 
-Para publicarlo como repo publico:
+For a public repository:
 
 ```bash
 gh repo create transcript-direct --public --source=. --remote=origin --push
