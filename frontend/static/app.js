@@ -15,7 +15,6 @@ const els = {
   statusText: document.querySelector("#statusText"),
   timerText: document.querySelector("#timerText"),
   chunkText: document.querySelector("#chunkText"),
-  levelText: document.querySelector("#levelText"),
   transcriptOutput: document.querySelector("#transcriptOutput"),
   eventLog: document.querySelector("#eventLog"),
 };
@@ -119,27 +118,6 @@ function updateTimer() {
   els.timerText.textContent = formatClock(seconds);
 }
 
-function audioRms(input) {
-  if (!input.length) {
-    return 0;
-  }
-  let sum = 0;
-  for (let i = 0; i < input.length; i += 1) {
-    sum += input[i] * input[i];
-  }
-  return Math.sqrt(sum / input.length);
-}
-
-function updateInputLevel(input) {
-  const rms = audioRms(input);
-  if (rms < 0.0005) {
-    els.levelText.textContent = "Silent";
-    return;
-  }
-  const db = Math.max(-90, Math.min(0, 20 * Math.log10(rms)));
-  els.levelText.textContent = `${Math.round(db)} dB`;
-}
-
 function clearRunTimers() {
   window.clearInterval(state.timerId);
   state.timerId = 0;
@@ -184,7 +162,6 @@ function finalizeStop(status = "Stopped") {
   state.isStopping = false;
   updateRunningUi(false);
   setStatus(status);
-  els.levelText.textContent = "Idle";
   updateTimer();
 }
 
@@ -485,7 +462,6 @@ function attachAudioProcessor(streams) {
       return;
     }
     const input = event.inputBuffer.getChannelData(0);
-    updateInputLevel(input);
     const normalized = downsample(input, audioContext.sampleRate, SAMPLE_RATE);
     pushAudio(normalized);
   };
