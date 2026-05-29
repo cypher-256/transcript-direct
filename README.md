@@ -185,20 +185,3 @@ Local reference result with `large-v3`, CUDA/float16, and 10 clips:
 
 On a full 50-clip run, `live-3s-context24` reduced WER from `0.294` to `0.277`
 compared with `live-3s-beam5`.
-
-## Publish to GitHub
-
-The repository should contain code, scripts, and empty directory placeholders,
-but not generated models or benchmark datasets.
-
-```bash
-git add .
-git commit -m "Initial Transcript Direct app"
-gh repo create transcript-direct --private --source=. --remote=origin --push
-```
-
-For a public repository:
-
-```bash
-gh repo create transcript-direct --public --source=. --remote=origin --push
-```
