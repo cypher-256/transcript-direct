@@ -1,5 +1,7 @@
 # Transcript Direct
 
+![Transcript Direct screenshot](image.png)
+
 Local web app for live audio transcription with `faster-whisper`. It has no
 login: open the page, choose a model/language, and press `Transcribe`.
 
