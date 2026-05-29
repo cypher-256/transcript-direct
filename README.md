@@ -18,7 +18,7 @@ and uses `Max phrase` only as a safety limit.
 - Internet access on first model use. `faster-whisper` downloads the selected
   model automatically into `models/whisper-cache/`.
 - CUDA GPU recommended for `large-v3`. CPU works, but use `tiny` or `base` for
-  practical latency.
+  practical latency. The app does not silently fall back from CUDA to CPU.
 - Node.js is optional and only needed for the frontend syntax check.
 
 ## Quick Start
@@ -46,6 +46,26 @@ WHISPER_DEVICE=cpu WHISPER_MODEL_NAME=tiny ./run-webapp.sh
 
 When you press `Transcribe` for the first time, the selected model is downloaded
 automatically. The first run can take longer because of that download.
+
+## CUDA Setup
+
+`faster-whisper` uses CTranslate2. Current CTranslate2 wheels expect CUDA 12
+runtime libraries such as `libcublas.so.12` and `libcudnn.so.9`. If your system
+has a newer CUDA toolkit only, for example CUDA 13, the GPU may be visible but
+transcription will fail until the CUDA 12 runtime libraries are available.
+
+Install the CUDA runtime libraries inside the virtual environment:
+
+```bash
+source .venv/bin/activate
+python -m pip install -r requirements-cuda.txt
+```
+
+Then restart the app with `./run-webapp.sh`. The launcher automatically adds
+the NVIDIA package library directories from `.venv` to `LD_LIBRARY_PATH`.
+
+If CUDA is selected but the required libraries are missing, the app reports
+`CUDA missing libs` instead of falling back to CPU.
 
 ## Manual Installation
 

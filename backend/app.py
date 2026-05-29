@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import ctypes
 import gc
 import json
 import logging
@@ -44,6 +45,11 @@ DEFAULT_SPEECH_RMS_THRESHOLD = 0.0025
 DEFAULT_ADAPTIVE_RMS_MULTIPLIER = 3.0
 DEFAULT_BEAM_SIZE = 5
 DEFAULT_CONTEXT_WORDS = 24
+CUDA_REQUIRED_LIBRARIES = (
+    "libcublas.so.12",
+    "libcublasLt.so.12",
+    "libcudnn.so.9",
+)
 
 BUILTIN_MODELS = [
     {
@@ -237,6 +243,30 @@ def _select_compute_type(device: str) -> str:
     return "float16" if device == "cuda" else "int8"
 
 
+def _missing_shared_libraries(names: tuple[str, ...]) -> list[str]:
+    missing = []
+    for name in names:
+        try:
+            ctypes.CDLL(name)
+        except OSError:
+            missing.append(name)
+    return missing
+
+
+def _missing_cuda_libraries() -> list[str]:
+    return _missing_shared_libraries(CUDA_REQUIRED_LIBRARIES)
+
+
+def _cuda_setup_error(missing: list[str]) -> str:
+    libraries = ", ".join(missing)
+    return (
+        "CUDA is selected but required CUDA shared libraries are missing: "
+        f"{libraries}. Install them with "
+        "`python -m pip install -r requirements-cuda.txt`, then restart "
+        "`./run-webapp.sh` so the launcher can add the NVIDIA library paths."
+    )
+
+
 def _download_root() -> Path:
     raw = os.getenv("WHISPER_DOWNLOAD_ROOT", "models/whisper-cache").strip()
     root = Path(raw).expanduser()
@@ -341,6 +371,10 @@ class WhisperRuntime:
         model_ref = str(entry.path) if entry.path is not None else entry.id
         device = _select_device()
         compute_type = _select_compute_type(device)
+        if device == "cuda":
+            missing = _missing_cuda_libraries()
+            if missing:
+                raise RuntimeError(_cuda_setup_error(missing))
 
         with self._lock:
             if (
@@ -377,6 +411,7 @@ class WhisperRuntime:
 
     def status(self) -> dict[str, Any]:
         device = _select_device()
+        cuda_missing_libraries = _missing_cuda_libraries() if device == "cuda" else []
         payload: dict[str, Any] = {
             "status": "ok",
             "device": device,
@@ -385,6 +420,8 @@ class WhisperRuntime:
             "sample_rate": DEFAULT_SAMPLE_RATE,
             "speaker_capture_available": _speaker_capture_available(),
             "speaker_source": _default_speaker_source(),
+            "cuda_ready": device != "cuda" or not cuda_missing_libraries,
+            "cuda_missing_libraries": cuda_missing_libraries,
         }
         cuda_available = _cuda_available()
         payload["cuda_available"] = cuda_available

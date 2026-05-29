@@ -19,6 +19,35 @@ if [[ -z "${PYTHON_BIN}" ]]; then
   fi
 fi
 
+CUDA_LIBRARY_DIRS="$("${PYTHON_BIN}" - <<'PY'
+import site
+from pathlib import Path
+
+roots = [Path(item) for item in site.getsitepackages()]
+user_site = site.getusersitepackages()
+if user_site:
+    roots.append(Path(user_site))
+
+relative_dirs = (
+    "nvidia/cublas/lib",
+    "nvidia/cuda_runtime/lib",
+    "nvidia/cudnn/lib",
+)
+
+paths = []
+for root in roots:
+    for relative in relative_dirs:
+        candidate = root / relative
+        if candidate.exists():
+            paths.append(str(candidate))
+
+print(":".join(dict.fromkeys(paths)))
+PY
+)"
+if [[ -n "${CUDA_LIBRARY_DIRS}" ]]; then
+  export LD_LIBRARY_PATH="${CUDA_LIBRARY_DIRS}:${LD_LIBRARY_PATH:-}"
+fi
+
 export PYTHONPATH="${ROOT_DIR}:${PYTHONPATH:-}"
 echo "Starting Transcript Direct on http://${HOST}:${PORT}"
 exec "${PYTHON_BIN}" -m uvicorn backend.app:app --host "${HOST}" --port "${PORT}"

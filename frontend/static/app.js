@@ -55,6 +55,10 @@ function updateHealthPill() {
     els.healthPill.textContent = `Backend · ${languageLabel()}`;
     return;
   }
+  if (state.health.device === "cuda" && state.health.cuda_ready === false) {
+    els.healthPill.textContent = `CUDA missing libs · ${languageLabel()}`;
+    return;
+  }
   els.healthPill.textContent = `${state.health.device} / ${state.health.compute_type} · ${languageLabel()}`;
 }
 
@@ -385,7 +389,11 @@ async function checkHealth() {
     const payload = await response.json();
     state.health = payload;
     updateHealthPill();
-    els.healthPill.classList.add("is-ok");
+    els.healthPill.classList.toggle("is-ok", payload.cuda_ready !== false);
+    els.healthPill.classList.toggle("is-error", payload.cuda_ready === false);
+    if (payload.cuda_ready === false) {
+      logEvent(`Missing CUDA libraries: ${payload.cuda_missing_libraries.join(", ")}`);
+    }
   } catch (error) {
     els.healthPill.textContent = "Backend offline";
     els.healthPill.classList.add("is-error");
