@@ -10,7 +10,7 @@ and uses `Frase max.` only as a safety limit.
 
 ## Requirements
 
-- Linux desktop.
+- Linux desktop, or Windows with WSL2.
 - Python 3.10 or newer.
 - Chrome/Chromium for tab/screen capture with audio.
 - CUDA GPU recommended for `large-v3`; CPU works, but it is much slower.
@@ -41,6 +41,12 @@ http://127.0.0.1:8099
 
 Use `127.0.0.1` or `localhost`. Browser tab/screen capture does not work
 reliably inside IDE previews or remote hosts without HTTPS.
+
+On Windows with WSL2, run the backend inside WSL and open the URL from a normal
+Windows Chrome/Chromium tab. The browser captures Windows tab/screen audio and
+microphone audio, then sends it to the WSL backend over `localhost`. If
+`127.0.0.1` does not forward to WSL on your setup, keep using `localhost`;
+opening the WSL IP directly over plain HTTP may block browser capture.
 
 If the port is already in use:
 
