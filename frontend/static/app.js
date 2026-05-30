@@ -33,6 +33,7 @@ const state = {
   pendingLength: 0,
   transcript: [],
   transcriptParagraphs: [[]],
+  interimTranscript: null,
   wordQueue: [],
   wordTimer: 0,
   isRunning: false,
@@ -159,9 +160,11 @@ function finalizeStop(status = "Stopped") {
   state.startedAt = 0;
   state.pendingBuffers = [];
   state.pendingLength = 0;
+  state.interimTranscript = null;
   state.isStopping = false;
   updateRunningUi(false);
   setStatus(status);
+  renderTranscript();
   updateTimer();
 }
 
@@ -179,7 +182,8 @@ function websocketUrl(model, language) {
 function renderTranscript() {
   els.transcriptOutput.innerHTML = "";
   const hasWords = state.transcriptParagraphs.some((paragraph) => paragraph.length > 0);
-  if (!hasWords && state.wordQueue.length === 0) {
+  const interimWords = state.interimTranscript?.text?.trim().split(/\s+/).filter(Boolean) || [];
+  if (!hasWords && state.wordQueue.length === 0 && interimWords.length === 0) {
     const placeholder = document.createElement("p");
     placeholder.className = "placeholder";
     placeholder.textContent = "Press Transcribe and share tab audio. Text will appear word by word.";
@@ -210,6 +214,22 @@ function renderTranscript() {
     }
     els.transcriptOutput.append(flow);
   });
+
+  if (interimWords.length > 0) {
+    const flow = document.createElement("p");
+    flow.className = "transcript-flow transcript-interim";
+    for (const word of interimWords) {
+      const span = document.createElement("span");
+      span.className = "transcript-word";
+      span.textContent = word;
+      flow.append(span, document.createTextNode(" "));
+    }
+    const cursor = document.createElement("span");
+    cursor.className = "transcript-cursor";
+    cursor.setAttribute("aria-hidden", "true");
+    flow.append(cursor);
+    els.transcriptOutput.append(flow);
+  }
   els.transcriptOutput.scrollTop = els.transcriptOutput.scrollHeight;
 }
 
@@ -262,6 +282,7 @@ function clearTranscript() {
   }
   state.transcript = [];
   state.transcriptParagraphs = [[]];
+  state.interimTranscript = null;
   state.wordQueue = [];
   state.chunksSent = 0;
   els.chunkText.textContent = "0";
@@ -527,11 +548,30 @@ function attachSocket(model, language) {
       return;
     }
     if (payload.type === "empty_phrase") {
+      if (state.interimTranscript?.phrase === payload.phrase) {
+        state.interimTranscript = null;
+        renderTranscript();
+      }
+      setStatus("Listening");
+      return;
+    }
+    if (payload.type === "interim_transcript") {
+      if (payload.text) {
+        state.interimTranscript = {
+          phrase: payload.phrase,
+          text: payload.text,
+          paragraphBreakBefore: Boolean(payload.paragraph_break_before),
+        };
+        renderTranscript();
+      }
       setStatus("Listening");
       return;
     }
     if (payload.type === "transcript") {
       if (payload.text) {
+        if (state.interimTranscript?.phrase === payload.phrase) {
+          state.interimTranscript = null;
+        }
         state.transcript.push({
           start: payload.start || 0,
           end: payload.end || 0,

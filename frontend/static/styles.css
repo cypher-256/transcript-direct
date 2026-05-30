@@ -351,6 +351,14 @@ button:disabled {
   margin-bottom: 0;
 }
 
+.transcript-interim {
+  color: #b8c7d5;
+}
+
+.transcript-interim .transcript-word {
+  opacity: 0.78;
+}
+
 .transcript-word {
   display: inline;
 }

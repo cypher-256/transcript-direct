@@ -45,6 +45,9 @@ DEFAULT_SPEECH_RMS_THRESHOLD = 0.0025
 DEFAULT_ADAPTIVE_RMS_MULTIPLIER = 3.0
 DEFAULT_BEAM_SIZE = 5
 DEFAULT_CONTEXT_WORDS = 32
+DEFAULT_INTERIM_SECONDS = 1.0
+DEFAULT_INTERIM_MIN_AUDIO_SECONDS = 0.8
+DEFAULT_INTERIM_BEAM_SIZE = 1
 CUDA_REQUIRED_LIBRARIES = (
     "libcublas.so.12",
     "libcublasLt.so.12",
@@ -503,11 +506,18 @@ def _transcribe_chunk(
     audio: np.ndarray,
     language: str | None,
     initial_prompt: str | None = None,
+    *,
+    beam_size: int | None = None,
 ) -> dict[str, Any]:
+    selected_beam_size = (
+        int(beam_size)
+        if beam_size is not None
+        else _env_int("WHISPER_BEAM_SIZE", DEFAULT_BEAM_SIZE)
+    )
     segments_iter, info = model.transcribe(
         audio,
         language=language or None,
-        beam_size=max(1, _env_int("WHISPER_BEAM_SIZE", DEFAULT_BEAM_SIZE)),
+        beam_size=max(1, selected_beam_size),
         temperature=0.0,
         vad_filter=_env_bool("WHISPER_INTERNAL_VAD", True),
         vad_parameters={
@@ -622,6 +632,25 @@ class NaturalPhraseBuffer:
     def active(self) -> bool:
         return bool(self.buffers)
 
+    def snapshot(self, *, min_audio_seconds: float) -> PhraseSegment | None:
+        if not self.active or self.speech_sec < self.min_speech_seconds:
+            return None
+
+        audio = np.concatenate(self.buffers).astype(np.float32, copy=False)
+        if audio.size < int(max(0.1, min_audio_seconds) * DEFAULT_SAMPLE_RATE):
+            return None
+
+        start = self.phrase_start_sec if self.phrase_start_sec is not None else 0.0
+        return PhraseSegment(
+            index=self.phrase_index + 1,
+            start=start,
+            end=start + audio.size / DEFAULT_SAMPLE_RATE,
+            audio=audio,
+            rms=float(max(self.frame_rms_values or [0.0])),
+            reason="interim",
+            paragraph_break_before=self.paragraph_break_before_current,
+        )
+
     def _speech_threshold(self) -> float:
         return max(
             self.speech_rms_threshold,
@@ -722,6 +751,50 @@ class NaturalPhraseBuffer:
         self.paragraph_break_before_current = False
 
 
+class InterimState:
+    def __init__(
+        self,
+        *,
+        enabled: bool,
+        interval_seconds: float,
+        min_audio_seconds: float,
+    ) -> None:
+        self.enabled = enabled
+        self.interval_seconds = max(0.4, float(interval_seconds))
+        self.min_audio_seconds = max(0.4, float(min_audio_seconds))
+        self.last_phrase = 0
+        self.last_end = 0.0
+
+    def should_transcribe(self, segment: PhraseSegment) -> bool:
+        if not self.enabled:
+            return False
+        duration = segment.audio.size / DEFAULT_SAMPLE_RATE
+        if duration < self.min_audio_seconds:
+            return False
+        if segment.index != self.last_phrase:
+            return True
+        return segment.end - self.last_end >= self.interval_seconds
+
+    def remember(self, segment: PhraseSegment) -> None:
+        self.last_phrase = segment.index
+        self.last_end = segment.end
+
+    def reset(self) -> None:
+        self.last_phrase = 0
+        self.last_end = 0.0
+
+
+def _build_interim_state() -> InterimState:
+    return InterimState(
+        enabled=_env_bool("TRANSCRIPT_INTERIM_ENABLED", True),
+        interval_seconds=_env_float("TRANSCRIPT_INTERIM_SECONDS", DEFAULT_INTERIM_SECONDS),
+        min_audio_seconds=_env_float(
+            "TRANSCRIPT_INTERIM_MIN_AUDIO_SECONDS",
+            DEFAULT_INTERIM_MIN_AUDIO_SECONDS,
+        ),
+    )
+
+
 async def _send_json(websocket: WebSocket, payload: dict[str, Any]) -> None:
     await websocket.send_text(json.dumps(payload, ensure_ascii=False))
 
@@ -785,10 +858,42 @@ async def _transcribe_phrase_segment(
     await _send_json(websocket, result)
 
 
+async def _transcribe_interim_segment(
+    websocket: WebSocket,
+    whisper: WhisperModel,
+    segment: PhraseSegment,
+    *,
+    language: str | None,
+    transcript_context: TranscriptContext,
+) -> None:
+    result = await asyncio.to_thread(
+        _transcribe_chunk,
+        whisper,
+        segment.audio,
+        language,
+        transcript_context.prompt(),
+        beam_size=_env_int("WHISPER_INTERIM_BEAM_SIZE", DEFAULT_INTERIM_BEAM_SIZE),
+    )
+    if not result["text"]:
+        return
+    await _send_json(
+        websocket,
+        {
+            "type": "interim_transcript",
+            "phrase": segment.index,
+            "start": segment.start,
+            "end": segment.end,
+            "text": result["text"],
+            "paragraph_break_before": segment.paragraph_break_before,
+        },
+    )
+
+
 async def _process_audio_payload(
     websocket: WebSocket,
     whisper: WhisperModel,
     phrase_buffer: NaturalPhraseBuffer,
+    interim_state: InterimState,
     payload: bytes,
     *,
     language: str | None,
@@ -797,6 +902,7 @@ async def _process_audio_payload(
     audio = _decode_pcm16(payload)
     segment = phrase_buffer.append(audio)
     if segment is not None:
+        interim_state.reset()
         await _transcribe_phrase_segment(
             websocket,
             whisper,
@@ -804,6 +910,22 @@ async def _process_audio_payload(
             language=language,
             transcript_context=transcript_context,
         )
+        return
+
+    interim_segment = phrase_buffer.snapshot(
+        min_audio_seconds=interim_state.min_audio_seconds,
+    )
+    if interim_segment is None or not interim_state.should_transcribe(interim_segment):
+        return
+
+    interim_state.remember(interim_segment)
+    await _transcribe_interim_segment(
+        websocket,
+        whisper,
+        interim_segment,
+        language=language,
+        transcript_context=transcript_context,
+    )
 
 
 async def _flush_phrase_buffer(
@@ -909,6 +1031,7 @@ async def _capture_speakers(
     transcript_context = TranscriptContext(
         max_words=_env_int("WHISPER_CONTEXT_WORDS", DEFAULT_CONTEXT_WORDS),
     )
+    interim_state = _build_interim_state()
 
     await _send_json(
         websocket,
@@ -933,6 +1056,7 @@ async def _capture_speakers(
                 websocket,
                 whisper,
                 phrase_buffer,
+                interim_state,
                 payload,
                 language=language,
                 transcript_context=transcript_context,
@@ -984,6 +1108,7 @@ async def transcribe_ws(
     transcript_context = TranscriptContext(
         max_words=_env_int("WHISPER_CONTEXT_WORDS", DEFAULT_CONTEXT_WORDS),
     )
+    interim_state = _build_interim_state()
 
     try:
         await _send_json(
@@ -1039,6 +1164,7 @@ async def transcribe_ws(
                 websocket,
                 whisper,
                 phrase_buffer,
+                interim_state,
                 payload,
                 language=selected_language,
                 transcript_context=transcript_context,

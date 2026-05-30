@@ -169,13 +169,17 @@ TRANSCRIPT_PHRASE_SILENCE_SECONDS=0.55 ./run-webapp.sh
 TRANSCRIPT_PARAGRAPH_SILENCE_SECONDS=1.2 ./run-webapp.sh
 TRANSCRIPT_SPEECH_RMS_THRESHOLD=0.0025 ./run-webapp.sh
 TRANSCRIPT_ADAPTIVE_RMS_MULTIPLIER=3.0 ./run-webapp.sh
+TRANSCRIPT_INTERIM_SECONDS=1.0 ./run-webapp.sh
+TRANSCRIPT_INTERIM_ENABLED=true ./run-webapp.sh
 WHISPER_BEAM_SIZE=5 ./run-webapp.sh
+WHISPER_INTERIM_BEAM_SIZE=1 ./run-webapp.sh
 WHISPER_CONTEXT_WORDS=32 ./run-webapp.sh
 ```
 
 For maximum speed, lower `WHISPER_BEAM_SIZE=1`. For better continuity, the
 default uses `WHISPER_CONTEXT_WORDS=32`. If difficult audio causes repetition,
-try `WHISPER_CONTEXT_WORDS=0`.
+try `WHISPER_CONTEXT_WORDS=0`. Interim text is enabled by default and is
+refined until the phrase is finalized.
 
 ## Quick Tests
 
