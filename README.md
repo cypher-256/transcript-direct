@@ -112,8 +112,8 @@ Recommended defaults:
 - Model: `Whisper large-v3`.
 - Source: browser tab or screen with audio.
 - Language: `English`.
-- Max phrase length: `3 s`.
-- Cross-phrase context: `24` words.
+- Max phrase length: `4 s`.
+- Cross-phrase context: `32` words.
 
 Recommended CPU settings:
 
@@ -170,11 +170,11 @@ TRANSCRIPT_PARAGRAPH_SILENCE_SECONDS=1.2 ./run-webapp.sh
 TRANSCRIPT_SPEECH_RMS_THRESHOLD=0.0025 ./run-webapp.sh
 TRANSCRIPT_ADAPTIVE_RMS_MULTIPLIER=3.0 ./run-webapp.sh
 WHISPER_BEAM_SIZE=5 ./run-webapp.sh
-WHISPER_CONTEXT_WORDS=24 ./run-webapp.sh
+WHISPER_CONTEXT_WORDS=32 ./run-webapp.sh
 ```
 
 For maximum speed, lower `WHISPER_BEAM_SIZE=1`. For better continuity, the
-default uses `WHISPER_CONTEXT_WORDS=24`. If difficult audio causes repetition,
+default uses `WHISPER_CONTEXT_WORDS=32`. If difficult audio causes repetition,
 try `WHISPER_CONTEXT_WORDS=0`.
 
 ## Quick Tests
@@ -247,7 +247,7 @@ WHISPER_DEVICE=cpu WHISPER_COMPUTE_TYPE=int8 python scripts/benchmark_asr.py --m
 Full run:
 
 ```bash
-python scripts/benchmark_asr.py --model large-v3 --limit 50 --configs live-3s-context24,live-3s-beam5
+python scripts/benchmark_asr.py --model large-v3 --limit 50 --configs live-4s-context32,live-3s-context24,live-3s-beam5
 ```
 
 The dataset is written to `benchmark_data/ami_2speaker_test/` and results are
@@ -257,10 +257,14 @@ Local reference result with `large-v3`, CUDA/float16, and 10 clips:
 
 | Config | WER | Bag F1 | RTF | Chunk latency |
 | --- | ---: | ---: | ---: | ---: |
+| live-4s-context32 | 0.228 | 0.852 | 0.045 | 0.169s |
 | live-3s-beam5 | 0.261 | 0.828 | 0.053 | 0.155s |
 | live-3s-context24 | 0.240 | 0.845 | 0.050 | 0.146s |
+| live-4s-beam5 | 0.244 | 0.833 | 0.048 | 0.181s |
 | live-2s-beam5 | 0.273 | 0.815 | 0.068 | 0.134s |
 | live-1s-beam5 | 0.388 | 0.719 | 0.102 | 0.103s |
 
-On a full 50-clip run, `live-3s-context24` reduced WER from `0.294` to `0.277`
-compared with `live-3s-beam5`.
+On the 10-clip run, the current `live-4s-context32` default reduced WER from
+`0.240` to `0.228` compared with the previous `live-3s-context24` default. On
+an older full 50-clip run, `live-3s-context24` reduced WER from `0.294` to
+`0.277` compared with `live-3s-beam5`.

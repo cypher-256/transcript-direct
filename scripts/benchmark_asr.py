@@ -49,6 +49,14 @@ CONFIGS: dict[str, dict[str, Any]] = {
         "beam_size": 5,
         "vad_filter": True,
         "context_words": 24,
+        "description": "Previous recommended live default.",
+    },
+    "live-4s-context32": {
+        "mode": "chunked",
+        "phrase_seconds": 4.0,
+        "beam_size": 5,
+        "vad_filter": True,
+        "context_words": 32,
         "description": "Current recommended live default.",
     },
     "live-3s-beam8": {
@@ -348,7 +356,7 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument(
         "--configs",
-        default="live-3s-context24,live-3s-beam5,live-2s-beam5,offline-full-beam5",
+        default="live-4s-context32,live-3s-context24,live-3s-beam5,offline-full-beam5",
         help=f"Comma-separated config names. Available: {', '.join(CONFIGS)}",
     )
     args = parser.parse_args()
