@@ -183,6 +183,8 @@ function renderTranscript() {
   els.transcriptOutput.innerHTML = "";
   const hasWords = state.transcriptParagraphs.some((paragraph) => paragraph.length > 0);
   const interimWords = state.interimTranscript?.text?.trim().split(/\s+/).filter(Boolean) || [];
+  const hasInterim = interimWords.length > 0;
+  const interimStartsParagraph = hasInterim && Boolean(state.interimTranscript?.paragraphBreakBefore) && hasWords;
   if (!hasWords && state.wordQueue.length === 0 && interimWords.length === 0) {
     const placeholder = document.createElement("p");
     placeholder.className = "placeholder";
@@ -206,7 +208,18 @@ function renderTranscript() {
       span.textContent = word;
       flow.append(span, document.createTextNode(" "));
     }
-    if (index === visibleParagraphs.length - 1) {
+    if (hasInterim && !interimStartsParagraph && index === visibleParagraphs.length - 1) {
+      for (const word of interimWords) {
+        const span = document.createElement("span");
+        span.className = "transcript-word transcript-interim-word";
+        span.textContent = word;
+        flow.append(span, document.createTextNode(" "));
+      }
+      const cursor = document.createElement("span");
+      cursor.className = "transcript-cursor";
+      cursor.setAttribute("aria-hidden", "true");
+      flow.append(cursor);
+    } else if (!hasInterim && index === visibleParagraphs.length - 1) {
       const cursor = document.createElement("span");
       cursor.className = "transcript-cursor";
       cursor.setAttribute("aria-hidden", "true");
@@ -215,12 +228,12 @@ function renderTranscript() {
     els.transcriptOutput.append(flow);
   });
 
-  if (interimWords.length > 0) {
+  if (interimStartsParagraph) {
     const flow = document.createElement("p");
-    flow.className = "transcript-flow transcript-interim";
+    flow.className = "transcript-flow";
     for (const word of interimWords) {
       const span = document.createElement("span");
-      span.className = "transcript-word";
+      span.className = "transcript-word transcript-interim-word";
       span.textContent = word;
       flow.append(span, document.createTextNode(" "));
     }
@@ -239,14 +252,7 @@ function ensureCurrentParagraph() {
   }
 }
 
-function drainWordQueue() {
-  if (state.wordQueue.length === 0) {
-    state.wordTimer = 0;
-    renderTranscript();
-    return;
-  }
-
-  const nextItem = state.wordQueue.shift();
+function applyQueuedTranscriptItem(nextItem) {
   if (nextItem?.type === "paragraph") {
     const current = state.transcriptParagraphs[state.transcriptParagraphs.length - 1];
     if (current && current.length > 0) {
@@ -255,9 +261,30 @@ function drainWordQueue() {
   } else if (nextItem?.type === "word") {
     ensureCurrentParagraph();
     state.transcriptParagraphs[state.transcriptParagraphs.length - 1].push(nextItem.value);
-    renderTranscript();
   }
+}
+
+function drainWordQueue() {
+  if (state.wordQueue.length === 0) {
+    state.wordTimer = 0;
+    renderTranscript();
+    return;
+  }
+
+  const nextItem = state.wordQueue.shift();
+  applyQueuedTranscriptItem(nextItem);
+  renderTranscript();
   state.wordTimer = window.setTimeout(drainWordQueue, WORD_APPEND_DELAY_MS);
+}
+
+function commitWordQueue() {
+  if (state.wordTimer) {
+    window.clearTimeout(state.wordTimer);
+    state.wordTimer = 0;
+  }
+  while (state.wordQueue.length > 0) {
+    applyQueuedTranscriptItem(state.wordQueue.shift());
+  }
 }
 
 function enqueueTranscriptText(text, paragraphBreakBefore = false) {
@@ -273,6 +300,21 @@ function enqueueTranscriptText(text, paragraphBreakBefore = false) {
   if (!state.wordTimer) {
     drainWordQueue();
   }
+}
+
+function appendTranscriptText(text, paragraphBreakBefore = false) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return;
+  }
+  commitWordQueue();
+  const hasWords = state.transcriptParagraphs.some((paragraph) => paragraph.length > 0);
+  if (paragraphBreakBefore && hasWords) {
+    state.transcriptParagraphs.push([]);
+  }
+  ensureCurrentParagraph();
+  state.transcriptParagraphs[state.transcriptParagraphs.length - 1].push(...words);
+  renderTranscript();
 }
 
 function clearTranscript() {
@@ -569,7 +611,8 @@ function attachSocket(model, language) {
     }
     if (payload.type === "transcript") {
       if (payload.text) {
-        if (state.interimTranscript?.phrase === payload.phrase) {
+        const replacesInterim = state.interimTranscript?.phrase === payload.phrase;
+        if (replacesInterim) {
           state.interimTranscript = null;
         }
         state.transcript.push({
@@ -577,7 +620,11 @@ function attachSocket(model, language) {
           end: payload.end || 0,
           text: payload.text,
         });
-        enqueueTranscriptText(payload.text, Boolean(payload.paragraph_break_before));
+        if (replacesInterim) {
+          appendTranscriptText(payload.text, Boolean(payload.paragraph_break_before));
+        } else {
+          enqueueTranscriptText(payload.text, Boolean(payload.paragraph_break_before));
+        }
         setStatus("Listening");
       }
       return;
