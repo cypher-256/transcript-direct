@@ -188,7 +188,7 @@ function renderTranscript() {
   if (!hasWords && state.wordQueue.length === 0 && interimWords.length === 0) {
     const placeholder = document.createElement("p");
     placeholder.className = "placeholder";
-    placeholder.textContent = "Press Transcribe and share tab audio. Text will appear word by word.";
+    placeholder.textContent = "Press Transcribe and share audio. Text will appear word by word.";
     els.transcriptOutput.append(placeholder);
     return;
   }
@@ -473,14 +473,25 @@ async function openCaptureStreams(includeMic) {
 
   const streams = [];
   const displayStream = await navigator.mediaDevices.getDisplayMedia({
-    video: true,
-    audio: true,
+    video: {
+      displaySurface: "window",
+    },
+    audio: {
+      suppressLocalAudioPlayback: false,
+    },
+    preferCurrentTab: false,
+    selfBrowserSurface: "exclude",
+    surfaceSwitching: "include",
+    systemAudio: "include",
+    windowAudio: "window",
   });
   streams.push(displayStream);
 
   if (displayStream.getAudioTracks().length === 0) {
     stopStreams(streams);
-    throw new Error("No audio was shared. Enable audio sharing in the browser picker.");
+    throw new Error(
+      "No audio was shared. Choose a tab with audio, or a window/screen with Share audio enabled. Window and system audio depend on browser and operating-system support.",
+    );
   }
 
   if (includeMic) {

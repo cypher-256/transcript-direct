@@ -5,10 +5,12 @@
 Local web app for live audio transcription with `faster-whisper`. It has no
 login: open the page, choose a model/language, and press `Transcribe`.
 
-The app captures audio from a browser tab or screen. It can optionally mix the
-browser microphone into the same audio signal before sending it to Whisper. The
-output is grouped naturally: the backend emits a phrase when it detects a pause
-and uses `Max phrase` only as a safety limit.
+The app captures shared audio from a browser tab, application window, or screen.
+It can optionally mix the browser microphone into the same audio signal before
+sending it to Whisper. Window and system-audio availability depends on browser
+and operating-system support. The output is grouped naturally: the backend
+emits a phrase when it detects a pause and uses `Max phrase` only as a safety
+limit.
 
 ## Requirements
 
@@ -110,7 +112,7 @@ http://localhost:8099
 Recommended defaults:
 
 - Model: `Whisper large-v3`.
-- Source: browser tab or screen with audio.
+- Source: browser tab, application window, or screen with audio.
 - Language: `English`.
 - Max phrase length: `4 s`.
 - Cross-phrase context: `32` words.
@@ -128,7 +130,15 @@ Normal flow:
 3. Enable `Include browser microphone` only if you want to mix your voice
    with the tab/screen audio.
 4. Press `Transcribe`.
-5. In the browser picker, choose a tab/screen and enable audio sharing.
+5. In the browser picker, choose a tab, window, or screen and enable audio
+   sharing.
+
+For another desktop application, choose its window in the picker. Current
+Chrome/Chromium versions can be asked for window audio, but support varies by
+operating system. If the selected window has no audio option, choose the full
+screen and enable system audio. On Linux, some Chromium builds expose only tab
+audio; in that case application-specific capture requires the local
+PipeWire/PulseAudio backend rather than the browser.
 
 ## Models
 
