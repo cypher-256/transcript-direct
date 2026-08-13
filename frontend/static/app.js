@@ -16,6 +16,7 @@ const els = {
   timerText: document.querySelector("#timerText"),
   chunkText: document.querySelector("#chunkText"),
   transcriptOutput: document.querySelector("#transcriptOutput"),
+  wordCount: document.querySelector("#wordCount"),
   eventLog: document.querySelector("#eventLog"),
 };
 
@@ -44,22 +45,33 @@ const state = {
 
 function setStatus(text) {
   els.statusText.textContent = text;
+  els.statusText.title = text;
 }
 
 function languageLabel() {
-  return els.languageSelect.value === "es" ? "Spanish" : "English";
+  const labels = {
+    en: "English",
+    es: "Spanish",
+    pt: "Portuguese",
+  };
+  return labels[els.languageSelect.value] || "English";
 }
 
 function updateHealthPill() {
+  let label;
   if (!state.health) {
-    els.healthPill.textContent = `Backend · ${languageLabel()}`;
-    return;
+    label = `Backend · ${languageLabel()}`;
+  } else if (state.health.device === "cuda" && state.health.cuda_ready === false) {
+    label = `CUDA missing libs · ${languageLabel()}`;
+  } else {
+    label = `${state.health.device} / ${state.health.compute_type} · ${languageLabel()}`;
   }
-  if (state.health.device === "cuda" && state.health.cuda_ready === false) {
-    els.healthPill.textContent = `CUDA missing libs · ${languageLabel()}`;
-    return;
+  let labelNode = els.healthPill.querySelector("span:last-child");
+  if (!labelNode) {
+    els.healthPill.innerHTML = '<span class="health-dot" aria-hidden="true"></span><span></span>';
+    labelNode = els.healthPill.querySelector("span:last-child");
   }
-  els.healthPill.textContent = `${state.health.device} / ${state.health.compute_type} · ${languageLabel()}`;
+  labelNode.textContent = label;
 }
 
 function logEvent(text) {
@@ -184,65 +196,65 @@ function renderTranscript() {
   const hasWords = state.transcriptParagraphs.some((paragraph) => paragraph.length > 0);
   const interimWords = state.interimTranscript?.text?.trim().split(/\s+/).filter(Boolean) || [];
   const hasInterim = interimWords.length > 0;
-  const interimStartsParagraph = hasInterim && Boolean(state.interimTranscript?.paragraphBreakBefore) && hasWords;
-  if (!hasWords && state.wordQueue.length === 0 && interimWords.length === 0) {
-    const placeholder = document.createElement("p");
-    placeholder.className = "placeholder";
-    placeholder.textContent = "Press Transcribe and share audio. Text will appear word by word.";
-    els.transcriptOutput.append(placeholder);
+  const interimStartsParagraph = hasInterim
+    && Boolean(state.interimTranscript?.paragraphBreakBefore)
+    && hasWords;
+
+  if (!hasWords && state.wordQueue.length === 0 && !hasInterim) {
+    els.transcriptOutput.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg>
+        </span>
+        <h3>Your transcript will appear here</h3>
+        <p>Choose your settings and start a session.<br>Words will flow in as you speak.</p>
+      </div>`;
+    els.wordCount.textContent = "0 words";
     return;
   }
 
-  const visibleParagraphs = state.transcriptParagraphs.filter(
-    (paragraph, index) => paragraph.length > 0 || index === state.transcriptParagraphs.length - 1,
-  );
-  visibleParagraphs.forEach((paragraph, index) => {
-    if (paragraph.length === 0 && index < visibleParagraphs.length - 1) {
-      return;
-    }
+  const documentView = document.createElement("div");
+  documentView.className = "transcript-document";
+  const visibleParagraphs = state.transcriptParagraphs.filter((paragraph) => paragraph.length > 0);
+
+  function createFlow(words, interim = false) {
     const flow = document.createElement("p");
     flow.className = "transcript-flow";
-    for (const word of paragraph) {
+    words.forEach((word, index) => {
       const span = document.createElement("span");
-      span.className = "transcript-word";
+      span.className = `transcript-word${interim ? " transcript-interim-word" : ""}`;
       span.textContent = word;
+      span.style.setProperty("--word-index", String(Math.min(index, 12)));
       flow.append(span, document.createTextNode(" "));
-    }
+    });
+    return flow;
+  }
+
+  visibleParagraphs.forEach((paragraph, index) => {
+    const flow = createFlow(paragraph);
     if (hasInterim && !interimStartsParagraph && index === visibleParagraphs.length - 1) {
-      for (const word of interimWords) {
-        const span = document.createElement("span");
-        span.className = "transcript-word transcript-interim-word";
-        span.textContent = word;
-        flow.append(span, document.createTextNode(" "));
-      }
-      const cursor = document.createElement("span");
-      cursor.className = "transcript-cursor";
-      cursor.setAttribute("aria-hidden", "true");
-      flow.append(cursor);
-    } else if (!hasInterim && index === visibleParagraphs.length - 1) {
-      const cursor = document.createElement("span");
-      cursor.className = "transcript-cursor";
-      cursor.setAttribute("aria-hidden", "true");
-      flow.append(cursor);
+      const interimFlow = createFlow(interimWords, true);
+      flow.append(...interimFlow.childNodes);
     }
-    els.transcriptOutput.append(flow);
+    documentView.append(flow);
   });
 
-  if (interimStartsParagraph) {
-    const flow = document.createElement("p");
-    flow.className = "transcript-flow";
-    for (const word of interimWords) {
-      const span = document.createElement("span");
-      span.className = "transcript-word transcript-interim-word";
-      span.textContent = word;
-      flow.append(span, document.createTextNode(" "));
-    }
+  if (hasInterim && (interimStartsParagraph || visibleParagraphs.length === 0)) {
+    documentView.append(createFlow(interimWords, true));
+  }
+
+  const lastFlow = documentView.lastElementChild;
+  if (lastFlow) {
     const cursor = document.createElement("span");
     cursor.className = "transcript-cursor";
     cursor.setAttribute("aria-hidden", "true");
-    flow.append(cursor);
-    els.transcriptOutput.append(flow);
+    lastFlow.append(cursor);
   }
+
+  els.transcriptOutput.append(documentView);
+  const finalWordCount = visibleParagraphs.reduce((total, paragraph) => total + paragraph.length, 0);
+  const visibleWordCount = finalWordCount + interimWords.length;
+  els.wordCount.textContent = `${visibleWordCount} ${visibleWordCount === 1 ? "word" : "words"}`;
   els.transcriptOutput.scrollTop = els.transcriptOutput.scrollHeight;
 }
 
@@ -435,7 +447,9 @@ async function checkHealth() {
       logEvent(`Missing CUDA libraries: ${payload.cuda_missing_libraries.join(", ")}`);
     }
   } catch (error) {
-    els.healthPill.textContent = "Backend offline";
+    state.health = null;
+    updateHealthPill();
+    els.healthPill.querySelector("span:last-child").textContent = "Backend offline";
     els.healthPill.classList.add("is-error");
   }
 }
@@ -743,6 +757,14 @@ async function copyTranscript() {
     return;
   }
   await navigator.clipboard.writeText(text);
+  const copyLabel = els.copyButton.querySelector("span");
+  const originalLabel = copyLabel.textContent;
+  copyLabel.textContent = "Copied";
+  els.copyButton.classList.add("is-copied");
+  window.setTimeout(() => {
+    copyLabel.textContent = originalLabel;
+    els.copyButton.classList.remove("is-copied");
+  }, 1400);
   logEvent("Text copied");
 }
 

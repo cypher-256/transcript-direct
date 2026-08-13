@@ -2,15 +2,28 @@
 
 ![Transcript Direct screenshot](image.png)
 
-Local web app for live audio transcription with `faster-whisper`. It has no
-login: open the page, choose a model/language, and press `Transcribe`.
+Transcript Direct is a private, local-first web app for turning shared audio
+into readable text in real time. It combines a focused transcription workspace
+with [`faster-whisper`](https://github.com/SYSTRAN/faster-whisper), live interim
+results, phrase timestamps, and optional microphone mixing.
 
-The app captures shared audio from a browser tab, application window, or screen.
-It can optionally mix the browser microphone into the same audio signal before
-sending it to Whisper. Window and system-audio availability depends on browser
-and operating-system support. The output is grouped naturally: the backend
-emits a phrase when it detects a pause and uses `Max phrase` only as a safety
-limit.
+No account, cloud upload, or manual model setup is required. Open the app,
+choose a model and language, then start a session.
+
+## Highlights
+
+- Live transcription with continuously refined interim text.
+- Continuous document-style transcript with live word and phrase counters.
+- Browser tab, application window, or full-screen audio capture.
+- Optional microphone mixing for calls, interviews, and commentary.
+- Natural phrase and paragraph grouping based on detected pauses.
+- One-click copy and clear actions.
+- Responsive blue-green interface designed for long reading sessions.
+- Local Whisper inference with CUDA acceleration or practical CPU presets.
+
+The browser sends captured audio only to the local backend. Window and system
+audio availability depends on the browser and operating system; Chrome or
+Chromium provides the best support.
 
 ## Requirements
 
@@ -46,8 +59,9 @@ For a CPU-only first run, start with the tiny model:
 WHISPER_DEVICE=cpu WHISPER_MODEL_NAME=tiny ./run-webapp.sh
 ```
 
-When you press `Transcribe` for the first time, the selected model is downloaded
-automatically. The first run can take longer because of that download.
+When you press `Start transcription` for the first time, the selected model is
+downloaded automatically. The first run can take longer because of that
+download.
 
 ## CUDA Setup
 
@@ -113,7 +127,7 @@ Recommended defaults:
 
 - Model: `Whisper large-v3`.
 - Source: browser tab, application window, or screen with audio.
-- Language: `English`.
+- Language: `English`, `Spanish`, or `Portuguese`.
 - Max phrase length: `4 s`.
 - Cross-phrase context: `32` words.
 
@@ -127,11 +141,13 @@ Normal flow:
 
 1. Open `http://127.0.0.1:8099`.
 2. Select model and language.
-3. Enable `Include browser microphone` only if you want to mix your voice
-   with the tab/screen audio.
-4. Press `Transcribe`.
+3. Enable `Include microphone` only if you want to mix your voice with the
+   tab/screen audio.
+4. Press `Start transcription`.
 5. In the browser picker, choose a tab, window, or screen and enable audio
    sharing.
+6. Follow the continuously growing transcript, then use `Copy` to place the
+   finished text on your clipboard.
 
 For another desktop application, choose its window in the picker. Current
 Chrome/Chromium versions can be asked for window audio, but support varies by
@@ -175,11 +191,12 @@ you set it manually.
 ## Tuning
 
 ```bash
-TRANSCRIPT_PHRASE_SILENCE_SECONDS=0.55 ./run-webapp.sh
+TRANSCRIPT_PHRASE_SILENCE_SECONDS=0.4 ./run-webapp.sh
 TRANSCRIPT_PARAGRAPH_SILENCE_SECONDS=1.2 ./run-webapp.sh
 TRANSCRIPT_SPEECH_RMS_THRESHOLD=0.0025 ./run-webapp.sh
 TRANSCRIPT_ADAPTIVE_RMS_MULTIPLIER=3.0 ./run-webapp.sh
-TRANSCRIPT_INTERIM_SECONDS=1.0 ./run-webapp.sh
+TRANSCRIPT_INTERIM_SECONDS=0.6 ./run-webapp.sh
+TRANSCRIPT_INTERIM_MIN_AUDIO_SECONDS=0.45 ./run-webapp.sh
 TRANSCRIPT_INTERIM_ENABLED=true ./run-webapp.sh
 WHISPER_BEAM_SIZE=5 ./run-webapp.sh
 WHISPER_INTERIM_BEAM_SIZE=1 ./run-webapp.sh
