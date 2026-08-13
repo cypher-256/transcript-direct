@@ -3,102 +3,115 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#071018" />
     <title>Transcript Direct</title>
-    <link rel="stylesheet" href="/styles.css?v=20260530-inline-interim-1" />
+    <link rel="stylesheet" href="/styles.css?v=20260813-bluegreen-1" />
   </head>
   <body>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
     <main class="app-shell">
       <header class="topbar">
-        <div>
-          <p class="eyebrow">Local whisper</p>
-          <h1>Transcript Direct</h1>
+        <a class="brand" href="/" aria-label="Transcript Direct home">
+          <span class="brand-mark" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i>
+          </span>
+          <span>
+            <strong>Transcript</strong>
+            <small>DIRECT</small>
+          </span>
+        </a>
+        <div class="health-pill" id="healthPill">
+          <span class="health-dot" aria-hidden="true"></span>
+          <span>Backend</span>
         </div>
-        <div class="health-pill" id="healthPill">Backend</div>
       </header>
 
-      <section class="control-panel" aria-label="Transcription controls">
-        <label class="field">
-          <span>Model</span>
-          <select id="modelSelect"></select>
-        </label>
+      <section class="hero" aria-labelledby="pageTitle">
+        <div>
+          <p class="eyebrow"><span></span> Live transcription studio</p>
+          <h1 id="pageTitle">Turn every voice<br />into <em>clear text.</em></h1>
+          <p class="hero-copy">Private, real-time transcription powered by Whisper and processed on your machine.</p>
+        </div>
 
-        <label class="field checkbox-field">
-          <span>Microphone</span>
-          <span class="checkbox-control">
+        <div class="session-state" aria-live="polite">
+          <div class="waveform" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div class="session-meta">
+            <span class="status-label">Session status</span>
+            <strong id="statusText">Ready to record</strong>
+          </div>
+          <div class="session-timer">
+            <span class="status-label">Duration</span>
+            <strong id="timerText">00:00</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="control-panel" aria-label="Transcription controls">
+          <div class="panel-heading">
+            <span class="panel-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.09A1.7 1.7 0 0 0 8.94 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.57 15 1.7 1.7 0 0 0 3 14H3v-4h.09A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88L4.2 7l2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.57 1.7 1.7 0 0 0 10 3.09V3h4v.09A1.7 1.7 0 0 0 15.06 4.6a1.7 1.7 0 0 0 1.88-.34L17 4.2 19.83 7l-.06.06A1.7 1.7 0 0 0 19.43 9 1.7 1.7 0 0 0 20.91 10H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+            </span>
+            <div><span class="status-label">Configuration</span><h2>Session setup</h2></div>
+          </div>
+
+          <label class="field">
+            <span>Whisper model</span>
+            <span class="select-wrap"><select id="modelSelect"></select></span>
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Language</span>
+              <span class="select-wrap"><select id="languageSelect"><option value="en" selected>English</option><option value="es">Spanish</option></select></span>
+            </label>
+            <label class="field">
+              <span>Max phrase</span>
+              <span class="select-wrap"><select id="chunkSelect"><option value="1.5">1.5 s</option><option value="2">2 s</option><option value="3">3 s</option><option value="4" selected>4 s</option></select></span>
+            </label>
+          </div>
+
+          <label class="mic-option">
+            <span class="mic-copy"><span class="mic-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8"/></svg></span><span><strong>Include microphone</strong><small>Mix your voice with shared audio</small></span></span>
             <input id="includeMicCheckbox" type="checkbox" />
-            <span class="toggle-track" aria-hidden="true">
-              <span class="toggle-thumb"></span>
-            </span>
-            <span class="toggle-copy">
-              <span class="toggle-title">Browser mic</span>
-              <span class="toggle-subtitle">Mix with shared audio</span>
-            </span>
-          </span>
-        </label>
+            <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+          </label>
 
-        <label class="field compact">
-          <span>Max phrase</span>
-          <select id="chunkSelect">
-            <option value="1.5">1.5 s</option>
-            <option value="2">2 s</option>
-            <option value="3">3 s</option>
-            <option value="4" selected>4 s</option>
-          </select>
-        </label>
+          <div class="actions" role="group" aria-label="Session actions">
+            <button class="primary-button" id="startButton" type="button"><span class="button-icon" aria-hidden="true"></span><span>Start transcription</span></button>
+            <button class="stop-button" id="stopButton" type="button" disabled aria-label="Stop transcription"><span aria-hidden="true"></span> Stop</button>
+          </div>
 
-        <label class="field compact">
-          <span>Language</span>
-          <select id="languageSelect">
-            <option value="en" selected>English</option>
-            <option value="es">Spanish</option>
-          </select>
-        </label>
+          <p class="privacy-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>Your audio stays on this device</p>
+        </aside>
 
-        <div class="actions" role="group" aria-label="Actions">
-          <button class="primary-button" id="startButton" type="button">
-            <span class="button-icon" aria-hidden="true"></span>
-            <span>Transcribe</span>
-          </button>
-          <button class="secondary-button" id="stopButton" type="button" disabled>
-            Stop
-          </button>
-          <button class="secondary-button" id="clearButton" type="button">
-            Clear
-          </button>
-        </div>
-      </section>
-
-      <section class="status-strip" aria-live="polite">
-        <div>
-          <span class="status-label">State</span>
-          <strong id="statusText">Ready</strong>
-        </div>
-        <div>
-          <span class="status-label">Time</span>
-          <strong id="timerText">00:00</strong>
-        </div>
-        <div>
-          <span class="status-label">Phrases</span>
-          <strong id="chunkText">0</strong>
-        </div>
-      </section>
-
-      <section class="transcript-layout">
         <article class="transcript-card">
           <div class="section-header">
-            <div>
-              <p class="eyebrow">Live output</p>
-              <h2>Transcription</h2>
+            <div class="transcript-title">
+              <span class="live-indicator" aria-hidden="true"></span>
+              <div><span class="status-label">Live output</span><h2>Transcript</h2></div>
             </div>
-            <button class="copy-button" id="copyButton" type="button">Copy</button>
+            <div class="transcript-actions">
+              <span class="phrase-count"><strong id="chunkText">0</strong> phrases</span>
+              <button class="icon-button" id="clearButton" type="button" title="Clear transcript" aria-label="Clear transcript"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v5M14 11v5"/></svg></button>
+              <button class="copy-button" id="copyButton" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/></svg><span>Copy</span></button>
+            </div>
           </div>
           <div class="live-transcript" id="transcriptOutput">
-            <p class="placeholder">Press Transcribe and share audio. Text will appear word by word.</p>
+            <div class="empty-state"><span class="empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></svg></span><h3>Your transcript will appear here</h3><p>Choose your settings and start a session.<br />Words will flow in as you speak.</p></div>
           </div>
+          <footer class="transcript-footer">
+            <span><i class="footer-dot"></i><span id="wordCount">0 words</span></span>
+            <span>Powered by <strong>Whisper</strong></span>
+          </footer>
         </article>
       </section>
     </main>
 
-    <script type="module" src="/app.js?v=20260609-system-audio-1"></script>
+    <script type="module" src="/app.js?v=20260813-bluegreen-1"></script>
   </body>
 </html>
