@@ -127,7 +127,7 @@ Recommended defaults:
 
 - Model: `Whisper large-v3`.
 - Source: browser tab, application window, or screen with audio.
-- Language: `English`.
+- Language: `English`, `Spanish`, or `Portuguese`.
 - Max phrase length: `4 s`.
 - Cross-phrase context: `32` words.
 

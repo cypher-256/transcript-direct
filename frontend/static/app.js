@@ -49,7 +49,12 @@ function setStatus(text) {
 }
 
 function languageLabel() {
-  return els.languageSelect.value === "es" ? "Spanish" : "English";
+  const labels = {
+    en: "English",
+    es: "Spanish",
+    pt: "Portuguese",
+  };
+  return labels[els.languageSelect.value] || "English";
 }
 
 function updateHealthPill() {

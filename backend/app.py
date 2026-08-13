@@ -552,7 +552,7 @@ def _transcribe_chunk(
 
 def _normalize_language(language: str | None) -> str:
     normalized = (language or "en").strip().lower()
-    if normalized not in {"es", "en"}:
+    if normalized not in {"es", "en", "pt"}:
         return "en"
     return normalized
 
