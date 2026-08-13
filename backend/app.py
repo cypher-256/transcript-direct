@@ -39,14 +39,14 @@ STATIC_DIR = PROJECT_ROOT / "frontend" / "static"
 DEFAULT_SAMPLE_RATE = 16_000
 DEFAULT_FRAME_SECONDS = 0.2
 DEFAULT_PHRASE_MAX_SECONDS = 4.0
-DEFAULT_PHRASE_SILENCE_SECONDS = 0.55
+DEFAULT_PHRASE_SILENCE_SECONDS = 0.4
 DEFAULT_PARAGRAPH_SILENCE_SECONDS = 1.2
 DEFAULT_SPEECH_RMS_THRESHOLD = 0.0025
 DEFAULT_ADAPTIVE_RMS_MULTIPLIER = 3.0
 DEFAULT_BEAM_SIZE = 5
 DEFAULT_CONTEXT_WORDS = 32
-DEFAULT_INTERIM_SECONDS = 1.0
-DEFAULT_INTERIM_MIN_AUDIO_SECONDS = 0.8
+DEFAULT_INTERIM_SECONDS = 0.6
+DEFAULT_INTERIM_MIN_AUDIO_SECONDS = 0.45
 DEFAULT_INTERIM_BEAM_SIZE = 1
 CUDA_REQUIRED_LIBRARIES = (
     "libcublas.so.12",
@@ -898,6 +898,7 @@ async def _process_audio_payload(
     *,
     language: str | None,
     transcript_context: TranscriptContext,
+    allow_interim: bool = True,
 ) -> None:
     audio = _decode_pcm16(payload)
     segment = phrase_buffer.append(audio)
@@ -910,6 +911,9 @@ async def _process_audio_payload(
             language=language,
             transcript_context=transcript_context,
         )
+        return
+
+    if not allow_interim:
         return
 
     interim_segment = phrase_buffer.snapshot(
@@ -926,6 +930,43 @@ async def _process_audio_payload(
         language=language,
         transcript_context=transcript_context,
     )
+
+
+async def _receive_browser_audio(
+    websocket: WebSocket,
+    audio_queue: asyncio.Queue[bytes | None],
+) -> str:
+    """Receive continuously so Whisper inference never blocks the WebSocket."""
+
+    result = "disconnect"
+    try:
+        while True:
+            message = await websocket.receive()
+            if message.get("type") == "websocket.disconnect":
+                break
+
+            text_message = message.get("text")
+            if text_message:
+                try:
+                    command = json.loads(text_message)
+                except json.JSONDecodeError:
+                    continue
+                if command.get("type") == "stop":
+                    result = "stop"
+                    break
+                continue
+
+            payload = message.get("bytes")
+            if payload:
+                await audio_queue.put(payload)
+    finally:
+        # Stop promptly instead of transcribing audio that became stale while an
+        # inference was running.
+        while not audio_queue.empty():
+            with suppress(asyncio.QueueEmpty):
+                audio_queue.get_nowait()
+        audio_queue.put_nowait(None)
+    return result
 
 
 async def _flush_phrase_buffer(
@@ -1084,6 +1125,14 @@ async def transcribe_ws(
     chunk_seconds: float = Query(default=DEFAULT_PHRASE_MAX_SECONDS),
 ) -> None:
     await websocket.accept()
+    audio_queue: asyncio.Queue[bytes | None] | None = None
+    receiver_task: asyncio.Task[str] | None = None
+    if source != "speakers":
+        audio_queue = asyncio.Queue()
+        receiver_task = asyncio.create_task(
+            _receive_browser_audio(websocket, audio_queue),
+        )
+
     safe_phrase_max_seconds = max(1.0, min(float(chunk_seconds), 30.0))
     selected_language = _normalize_language(language)
     phrase_buffer = NaturalPhraseBuffer(
@@ -1139,27 +1188,12 @@ async def transcribe_ws(
             )
             return
 
+        assert audio_queue is not None
+        assert receiver_task is not None
         while True:
-            message = await websocket.receive()
-            if message.get("type") == "websocket.disconnect":
+            payload = await audio_queue.get()
+            if payload is None:
                 break
-
-            text_message = message.get("text")
-            if text_message:
-                try:
-                    command = json.loads(text_message)
-                except json.JSONDecodeError:
-                    continue
-                if command.get("type") == "stop":
-                    phrase_buffer.discard()
-                    await _send_json(websocket, {"type": "stopped"})
-                    break
-                continue
-
-            payload = message.get("bytes")
-            if not payload:
-                continue
-
             await _process_audio_payload(
                 websocket,
                 whisper,
@@ -1168,7 +1202,13 @@ async def transcribe_ws(
                 payload,
                 language=selected_language,
                 transcript_context=transcript_context,
+                # If inference fell behind, drain the accumulated audio first
+                # and transcribe only the newest snapshot.
+                allow_interim=audio_queue.empty(),
             )
+        phrase_buffer.discard()
+        if await receiver_task == "stop":
+            await _send_json(websocket, {"type": "stopped"})
     except WebSocketDisconnect:
         return
     except Exception as exc:
@@ -1180,6 +1220,11 @@ async def transcribe_ws(
                 "message": str(exc),
             },
         )
+    finally:
+        if receiver_task is not None and not receiver_task.done():
+            receiver_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await receiver_task
 
 
 @app.get("/")
