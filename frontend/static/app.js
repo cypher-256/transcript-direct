@@ -188,8 +188,14 @@ function websocketUrl(model, language) {
 
 function renderTranscript() {
   els.transcriptOutput.innerHTML = "";
+  const hasWords = state.transcriptParagraphs.some((paragraph) => paragraph.length > 0);
   const interimWords = state.interimTranscript?.text?.trim().split(/\s+/).filter(Boolean) || [];
-  if (state.transcript.length === 0 && interimWords.length === 0) {
+  const hasInterim = interimWords.length > 0;
+  const interimStartsParagraph = hasInterim
+    && Boolean(state.interimTranscript?.paragraphBreakBefore)
+    && hasWords;
+
+  if (!hasWords && state.wordQueue.length === 0 && !hasInterim) {
     els.transcriptOutput.innerHTML = `
       <div class="empty-state">
         <span class="empty-icon" aria-hidden="true">
@@ -202,64 +208,46 @@ function renderTranscript() {
     return;
   }
 
-  const timeline = document.createElement("div");
-  timeline.className = "transcript-timeline";
+  const documentView = document.createElement("div");
+  documentView.className = "transcript-document";
+  const visibleParagraphs = state.transcriptParagraphs.filter((paragraph) => paragraph.length > 0);
 
-  function createSegment(words, timestamp, options = {}) {
-    const segment = document.createElement("section");
-    segment.className = `transcript-segment${options.interim ? " is-interim" : ""}${options.latest ? " is-latest" : ""}`;
-
-    const rail = document.createElement("div");
-    rail.className = "segment-rail";
-    const avatar = document.createElement("span");
-    avatar.className = "speaker-avatar";
-    avatar.textContent = options.interim ? "•••" : "A";
-    const time = document.createElement("time");
-    time.textContent = timestamp;
-    rail.append(avatar, time);
-
-    const content = document.createElement("div");
-    content.className = "segment-content";
-    const label = document.createElement("div");
-    label.className = "segment-label";
-    label.innerHTML = options.interim
-      ? '<span class="listening-bars"><i></i><i></i><i></i></span> Listening now'
-      : '<span>Speaker</span><i></i><span>Captured audio</span>';
+  function createFlow(words, interim = false) {
     const flow = document.createElement("p");
     flow.className = "transcript-flow";
     words.forEach((word, index) => {
       const span = document.createElement("span");
-      span.className = `transcript-word${options.interim ? " transcript-interim-word" : ""}`;
+      span.className = `transcript-word${interim ? " transcript-interim-word" : ""}`;
       span.textContent = word;
-      span.style.setProperty("--word-index", String(Math.min(index, 18)));
+      span.style.setProperty("--word-index", String(Math.min(index, 12)));
       flow.append(span, document.createTextNode(" "));
     });
-    if (options.interim) {
-      const cursor = document.createElement("span");
-      cursor.className = "transcript-cursor";
-      cursor.setAttribute("aria-hidden", "true");
-      flow.append(cursor);
-    }
-    content.append(label, flow);
-    segment.append(rail, content);
-    return segment;
+    return flow;
   }
 
-  state.transcript.forEach((item, index) => {
-    const words = item.text.trim().split(/\s+/).filter(Boolean);
-    timeline.append(createSegment(words, formatClock(item.start || 0), {
-      latest: index === state.transcript.length - 1 && interimWords.length === 0,
-    }));
+  visibleParagraphs.forEach((paragraph, index) => {
+    const flow = createFlow(paragraph);
+    if (hasInterim && !interimStartsParagraph && index === visibleParagraphs.length - 1) {
+      const interimFlow = createFlow(interimWords, true);
+      flow.append(...interimFlow.childNodes);
+    }
+    documentView.append(flow);
   });
-  if (interimWords.length > 0) {
-    const elapsed = state.startedAt ? (Date.now() - state.startedAt) / 1000 : 0;
-    timeline.append(createSegment(interimWords, formatClock(elapsed), { interim: true, latest: true }));
+
+  if (hasInterim && (interimStartsParagraph || visibleParagraphs.length === 0)) {
+    documentView.append(createFlow(interimWords, true));
   }
-  els.transcriptOutput.append(timeline);
-  const finalWordCount = state.transcript.reduce(
-    (total, item) => total + item.text.trim().split(/\s+/).filter(Boolean).length,
-    0,
-  );
+
+  const lastFlow = documentView.lastElementChild;
+  if (lastFlow) {
+    const cursor = document.createElement("span");
+    cursor.className = "transcript-cursor";
+    cursor.setAttribute("aria-hidden", "true");
+    lastFlow.append(cursor);
+  }
+
+  els.transcriptOutput.append(documentView);
+  const finalWordCount = visibleParagraphs.reduce((total, paragraph) => total + paragraph.length, 0);
   const visibleWordCount = finalWordCount + interimWords.length;
   els.wordCount.textContent = `${visibleWordCount} ${visibleWordCount === 1 ? "word" : "words"}`;
   els.transcriptOutput.scrollTop = els.transcriptOutput.scrollHeight;

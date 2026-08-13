@@ -13,7 +13,7 @@ choose a model and language, then start a session.
 ## Highlights
 
 - Live transcription with continuously refined interim text.
-- Timeline-based transcript with phrase timestamps and word/phrase counters.
+- Continuous document-style transcript with live word and phrase counters.
 - Browser tab, application window, or full-screen audio capture.
 - Optional microphone mixing for calls, interviews, and commentary.
 - Natural phrase and paragraph grouping based on detected pauses.
@@ -146,8 +146,8 @@ Normal flow:
 4. Press `Start transcription`.
 5. In the browser picker, choose a tab, window, or screen and enable audio
    sharing.
-6. Follow the live timeline, then use `Copy` to place the finished transcript
-   on your clipboard.
+6. Follow the continuously growing transcript, then use `Copy` to place the
+   finished text on your clipboard.
 
 For another desktop application, choose its window in the picker. Current
 Chrome/Chromium versions can be asked for window audio, but support varies by
